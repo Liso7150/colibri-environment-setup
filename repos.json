@@ -17,8 +17,7 @@
     {"concept": "coding-agent", "repo": "Liso7150/colibri-coding-agent", "local": "D:/Colibri-Suite/colibri-coding-agent", "required": false, "apps": ["coding-agent"], "description": "Chat-first coding agent server + Streamlit workspace UI."},
     {"concept": "jetbrains", "repo": "Liso7150/colibri-jetbrains", "local": "D:/Colibri-Suite/colibri-jetbrains", "required": false, "apps": ["jetbrains"], "description": "JetBrains IDE plugin (SSE chat tool window + Explain/Fix/WriteTests actions) and ACP bridge."},
     {"concept": "installer", "repo": "Liso7150/colibri-installer", "local": "D:/Colibri-Suite/colibri-installer", "required": false, "apps": ["desktop", "coding-agent", "cli", "jetbrains"], "description": "Device-detecting installer; choose features/apps to install."},
-    {"concept": "finetune", "repo": "Liso7150/colibri-finetune", "local": "D:/Colibri-Suite/colibri-finetune", "required": false, "apps": [], "description": "AirLLM streamed LoRA fine-tuning pipeline (download/SFT/train/merge/convert)."},
-    {"concept": "ncm", "repo": "Liso7150/ncm", "local": "D:/Colibri-Suite/ncm", "required": false, "paused": true, "apps": [], "description": "Next-Concept-Modeling experiments (paused)."}
+    {"concept": "finetune", "repo": "Liso7150/colibri-finetune", "local": "D:/Colibri-Suite/colibri-finetune", "required": false, "apps": [], "description": "AirLLM streamed LoRA fine-tuning pipeline (download/SFT/train/merge/convert)."}
   ],
   "pip_dependencies": ["airllm", "torch", "transformers", "accelerate", "safetensors", "huggingface_hub", "fastapi", "uvicorn", "streamlit", "pywebview", "openvino"],
   "features": {
@@ -27,7 +26,6 @@
     "coding-agent": {"requires": ["engine", "core", "coding-agent"], "description": "Coding agent server + workspace UI."},
     "jetbrains": {"requires": ["engine", "jetbrains"], "description": "JetBrains IDE integration."},
     "npu": {"requires": ["engine", "core"], "description": "Intel NPU embedding sidecar (OpenVINO)."},
-    "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm"], "description": "AirLLM streamed LoRA fine-tuning."},
-    "ncm": {"requires": ["ncm"], "description": "NCM concept modeling (paused)."}
+    "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm"], "description": "AirLLM streamed LoRA fine-tuning."}
   }
 }
