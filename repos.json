@@ -1,0 +1,33 @@
+{
+  "account": "Liso7150",
+  "suite_root": "D:/Colibri-Suite",
+  "engine_root": "D:/Colibri",
+  "models_root": "D:/colibri-models",
+  "cache_root": "D:/.cache",
+  "venv": "D:/Colibri/.venv",
+  "credits": [
+    {"name": "Colibri engine", "upstream": "https://github.com/JustVugg/colibri", "role": "device-tiered MoE inference engine"},
+    {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference + streamed LoRA training"}
+  ],
+  "repos": [
+    {"concept": "engine", "repo": "Liso7150/colibri", "upstream": "JustVugg/colibri", "local": "D:/Colibri", "branch": "feat/local-inference-toolkit", "required": true, "apps": ["desktop", "coding-agent", "cli", "jetbrains"], "description": "Colibri C engine + coli CLI + OpenAI-compatible serve. Fork of JustVugg/colibri."},
+    {"concept": "core", "repo": "Liso7150/colibri-core", "local": "D:/Colibri-Suite/colibri-core", "required": true, "apps": ["coding-agent", "desktop"], "description": "Shared engine client, agent loop, tool plugins, NPU embed sidecar."},
+    {"concept": "cli", "repo": "Liso7150/colibri-cli", "local": "D:/Colibri-Suite/colibri-cli", "required": true, "apps": ["cli"], "description": "coli command-line interface wrapper (serve/convert/plan/doctor/chat)."},
+    {"concept": "desktop", "repo": "Liso7150/colibri-code", "local": "D:/Colibri-Suite/colibri-code", "required": false, "apps": ["desktop"], "description": "Colibri Code Electron desktop app; .exe/mac/linux builds."},
+    {"concept": "coding-agent", "repo": "Liso7150/colibri-coding-agent", "local": "D:/Colibri-Suite/colibri-coding-agent", "required": false, "apps": ["coding-agent"], "description": "Chat-first coding agent server + Streamlit workspace UI."},
+    {"concept": "jetbrains", "repo": "Liso7150/colibri-jetbrains", "local": "D:/Colibri-Suite/colibri-jetbrains", "required": false, "apps": ["jetbrains"], "description": "JetBrains IDE plugin (SSE chat tool window + Explain/Fix/WriteTests actions) and ACP bridge."},
+    {"concept": "installer", "repo": "Liso7150/colibri-installer", "local": "D:/Colibri-Suite/colibri-installer", "required": false, "apps": ["desktop", "coding-agent", "cli", "jetbrains"], "description": "Device-detecting installer; choose features/apps to install."},
+    {"concept": "finetune", "repo": "Liso7150/colibri-finetune", "local": "D:/Colibri-Suite/colibri-finetune", "required": false, "apps": [], "description": "AirLLM streamed LoRA fine-tuning pipeline (download/SFT/train/merge/convert)."},
+    {"concept": "ncm", "repo": "Liso7150/ncm", "local": "D:/Colibri-Suite/ncm", "required": false, "paused": true, "apps": [], "description": "Next-Concept-Modeling experiments (paused)."}
+  ],
+  "pip_dependencies": ["airllm", "torch", "transformers", "accelerate", "safetensors", "huggingface_hub", "fastapi", "uvicorn", "streamlit", "pywebview", "openvino"],
+  "features": {
+    "inference": {"requires": ["engine", "core", "cli"], "description": "Local Colibri inference + CLI."},
+    "desktop": {"requires": ["engine", "core", "desktop"], "description": "Colibri Code desktop app (.exe/mac/linux)."},
+    "coding-agent": {"requires": ["engine", "core", "coding-agent"], "description": "Coding agent server + workspace UI."},
+    "jetbrains": {"requires": ["engine", "jetbrains"], "description": "JetBrains IDE integration."},
+    "npu": {"requires": ["engine", "core"], "description": "Intel NPU embedding sidecar (OpenVINO)."},
+    "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm"], "description": "AirLLM streamed LoRA fine-tuning."},
+    "ncm": {"requires": ["ncm"], "description": "NCM concept modeling (paused)."}
+  }
+}
