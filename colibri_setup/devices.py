@@ -6,10 +6,14 @@ so it runs on Windows, macOS and Linux alike. Pure stdlib + optional probes.
 """
 from __future__ import annotations
 
+import json
 import os
 import platform
+import re
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 from dataclasses import dataclass, field, asdict
 
 
@@ -32,6 +36,8 @@ class Device:
     npu: bool = False
     cuda: bool = False
     vulkan: bool = False
+    metal: bool = False
+    client_only: bool = False
     disk_free_gb: float = 0.0
     disk_path: str = ""
     python: str = ""
@@ -89,20 +95,41 @@ def _nvidia_gpus():
     return gpus
 
 
-def _has_cuda():
+def _vulkan_gpus():
+    output = _run(["vulkaninfo", "--summary"])
+    devices = []
+    for block in re.split(r"(?m)^\s*GPU\d+:?\s*$", output)[1:]:
+        match = re.search(r"deviceName\s*=\s*([^\r\n]+)", block)
+        if not match or "PHYSICAL_DEVICE_TYPE_CPU" in block:
+            continue
+        name = match.group(1).strip()
+        if any(software in name.lower() for software in ("llvmpipe", "lavapipe", "swiftshader")):
+            continue
+        kind = next((vendor for vendor in ("nvidia", "amd", "intel") if vendor in name.lower()), "vulkan")
+        if "radeon" in name.lower():
+            kind = "amd"
+        devices.append({"name": name, "vram_mb": 0, "kind": kind, "api": "vulkan"})
+    return devices
+
+
+def _metal_gpus():
+    output = _run(["system_profiler", "SPDisplaysDataType", "-json"])
     try:
-        import torch
-        return bool(torch.cuda.is_available())
-    except Exception:
-        return bool(_run(["nvidia-smi", "-L"]))
-
-
-def _has_vulkan():
-    sys = platform.system()
-    if sys == "Windows":
-        return bool(_run(["where", "vulkaninfo"])) or os.path.exists(
-            os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "vulkan-1.dll"))
-    return bool(shutil.which("vulkaninfo"))
+        displays = json.loads(output).get("SPDisplaysDataType", [])
+    except (ValueError, AttributeError):
+        displays = []
+    devices = []
+    for display in displays:
+        metal = str(display.get("spdisplays_metal", display.get("spdisplays_metalFamily", "")))
+        name = display.get("sppci_model", "")
+        if name and metal and not any(word in metal.lower() for word in ("unsupported", "not supported")):
+            devices.append({"name": name, "vram_mb": 0, "kind": "apple" if "Apple" in name else "metal", "api": "metal"})
+    # Apple Silicon supports Metal, but shared system RAM is not dedicated VRAM.
+    if not devices:
+        brand = _run(["sysctl", "-n", "machdep.cpu.brand_string"])
+        if brand.startswith("Apple ") and platform.machine().lower() in ("arm64", "aarch64"):
+            devices.append({"name": brand, "vram_mb": 0, "kind": "apple", "api": "metal"})
+    return devices
 
 
 def _has_intel_npu():
@@ -115,43 +142,53 @@ def _has_intel_npu():
 
 
 def detect(disk_path=None):
-    sys = platform.system()
-    disk_path = disk_path or ("D:/" if sys == "Windows" and os.path.exists("D:/") else os.path.expanduser("~"))
-    gpus = _nvidia_gpus()
-    cuda = _has_cuda()
-    vulkan = _has_vulkan()
-    npu = _has_intel_npu()
+    system = platform.system()
+    if system == "Android" or hasattr(sys, "getandroidapilevel") or os.environ.get("ANDROID_ROOT") or "com.termux" in os.environ.get("PREFIX", ""):
+        system = "Android"
+    client_only = system.lower() in ("android", "ios", "ipados")
+    disk = Path(disk_path or Path.home()).expanduser()
+    while not disk.exists() and disk != disk.parent:
+        disk = disk.parent
+    nvidia = [] if client_only else _nvidia_gpus()
+    vk = [] if client_only else _vulkan_gpus()
+    metal = _metal_gpus() if system == "Darwin" else []
+    gpus = list(nvidia)
+    for gpu in vk + metal:
+        existing = next((g for g in gpus if g["name"].casefold() == gpu["name"].casefold()), None)
+        if existing:
+            existing["api"] = gpu["api"]
+        else:
+            gpus.append(gpu)
+    npu = False if client_only else _has_intel_npu()
     try:
-        free = shutil.disk_usage(disk_path).free / 1024**3
-    except Exception:
+        free = shutil.disk_usage(disk).free / 1024**3
+    except OSError:
         free = 0.0
-    if cuda and gpus:
-        tier = "cuda"
-    elif vulkan and gpus:
-        tier = "vulkan"
-    elif npu:
-        tier = "npu"
-    else:
-        tier = "cpu"
+    tier = "client" if client_only else "cuda" if nvidia else "metal" if metal else "vulkan" if vk else "cpu"
     return Device(
-        os=sys, os_version=platform.release(), arch=platform.machine(),
+        os=system, os_version=platform.release(), arch=platform.machine(),
         cpu_cores=os.cpu_count() or 0, ram_gb=_ram_gb(), gpu=gpus, npu=npu,
-        cuda=cuda, vulkan=vulkan, disk_free_gb=round(free, 1), disk_path=disk_path,
+        cuda=bool(nvidia), vulkan=bool(vk), metal=bool(metal), client_only=client_only,
+        disk_free_gb=round(free, 1), disk_path=str(disk),
         python=platform.python_version(), tier=tier,
     )
 
 
 def recommend(dev: Device):
-    """Suggest a context window + tier policy from detected hardware."""
+    """Hardware visibility is not proof that a native backend was compiled."""
     vram = max((g.get("vram_mb", 0) for g in dev.gpu), default=0) / 1024
-    if dev.tier in ("cuda", "vulkan") and vram >= 7.5 and dev.ram_gb >= 16:
-        return {"policy": "quality", "ctx": 32768, "auto_tier": True,
-                "note": "GPU hot tier + host pool; large context."}
-    if dev.tier == "npu":
-        return {"policy": "balanced", "ctx": 8192, "auto_tier": True,
-                "note": "NPU embeddings; CPU/iGPU inference."}
-    return {"policy": "balanced", "ctx": 8192, "auto_tier": True,
-            "note": "CPU inference; consider a smaller model."}
+    ctx = 2048
+    if vram >= 8 and dev.ram_gb >= 16:
+        ctx = 4096
+    if vram >= 24 and dev.ram_gb >= 64:
+        ctx = 8192
+    note = "Conservative starting context; model size/KV cache must fit. Native accelerator support is unverified; default CPU."
+    if dev.npu:
+        note += " NPU is an embedding sidecar only, not a decoder."
+    if dev.client_only:
+        note = "Android/iOS: PWA client only. Run the shared agent and engine on a Windows/macOS/Linux host."
+    return {"backend": "cpu", "candidate_backend": dev.tier, "policy": "balanced", "ctx": ctx,
+            "auto_tier": False, "features": ["mobile"] if dev.client_only else ["inference"], "note": note}
 
 
 if __name__ == "__main__":

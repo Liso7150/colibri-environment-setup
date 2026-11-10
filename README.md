@@ -2,7 +2,7 @@
 
 The hub that fetches and wires every Colibri app on your machine. It detects your
 device, lets you choose features, and clones the right repos into a unified suite
-layout with a shared virtualenv.
+layout with a shared virtualenv and one runtime configuration.
 
 ## Credits
 
@@ -25,25 +25,59 @@ This suite builds on two upstream projects:
 | Coding agent | `Liso7150/colibri-coding-agent` | `D:/Colibri-Suite/colibri-coding-agent` |
 | JetBrains | `Liso7150/colibri-jetbrains` | `D:/Colibri-Suite/colibri-jetbrains` |
 | Installer | `Liso7150/colibri-installer` | `D:/Colibri-Suite/colibri-installer` |
-| NCM (paused) | `Liso7150/ncm` | `D:/Colibri-Suite/ncm` |
+| Fine-tune | `Liso7150/colibri-finetune` | `D:/Colibri-Suite/colibri-finetune` |
 
-Models live in `D:/colibri-models`, all cache in `D:/.cache`, shared venv at
-`D:/Colibri/.venv` (paths are configurable in `repos.json`).
+The `D:` paths above are the legacy layout, used only on a Windows machine where
+those directories already exist. Everywhere else the same layout lives under
+`~/Colibri`, `~/Colibri-Suite`, `~/colibri-models` and `~/.cache/colibri`.
+Roots, shared venv (`<engine_root>/.venv`), interpreter and workspace are all
+resolved through one config file, `~/.colibri/config.json` (override with
+`COLIBRI_CONFIG`), and the matching `COLIBRI_*` environment variables. The
+workspace defaults to `suite_root`. Caches (`HF_HOME`, pip, npm) are kept under
+`cache_root` and never inside the repos.
 
 ## Usage
 
 ```bash
 python setup.py detect                         # device + recommended config
 python setup.py features                       # list installable features
-python setup.py plan --features inference,desktop,jetbrains
+python setup.py plan --features inference,desktop,coding-agent
+python setup.py plan --all --json              # machine-readable, read-only
 python setup.py fetch --features inference,desktop
-python setup.py fetch --all
+python setup.py install --features inference,desktop
+python setup.py install --features inference --build --model <model-dir>
 ```
 
-Or use the graphical/interactive **[installer](https://github.com/Liso7150/colibri-installer)**,
-which detects your device and walks you through feature selection.
+`plan`/`--dry-run` never clone, install, write the config or start a server.
+`fetch` only clones/verifies checkouts. `install` additionally creates the shared
+venv, installs the selected dependencies, optionally builds the native engine
+target, and writes the shared config only after every action succeeded. Servers
+are never started for you; the plan prints the exact commands to run.
+
+Or use the **[installer](https://github.com/Liso7150/colibri-installer)**, which
+bootstraps this hub, detects your device and walks you through feature selection
+(`python install.py`). Phones are PWA clients: the hub refuses on-device engine
+installation on Android/iOS and points at a desktop host instead.
 
 ## Features
 
-`inference`, `desktop`, `coding-agent`, `jetbrains`, `npu`, `fine-tune`, `ncm`
-(paused). Each maps to the repos it needs (see `repos.json`).
+| Feature | Requires | Notes |
+|---|---|---|
+| `inference` | engine, core, cli | Local engine plus the shared runtime/CLI |
+| `desktop` | engine, core, desktop, coding-agent | Electron app; packaging is a separate step |
+| `coding-agent` | engine, core, coding-agent | Shared agent server plus web/PWA UI |
+| `jetbrains` | engine, core, jetbrains | IDE plugin; package it separately |
+| `npu` | core (+ `openvino`) | Embedding sidecar only, **not** a decoder |
+| `fine-tune` | engine, finetune (+ torch/airllm/...) | Explicit opt-in; nothing downloads or trains implicitly |
+| `mobile` | core, coding-agent | PWA client over a trusted connection; no phone inference |
+| `installer` | installer | Download the portable bootstrap itself |
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite is offline: hardware probes are injected, and the shared-config
+validator is compared against `colibri-core`'s authoritative loader whenever a
+core checkout is available.
