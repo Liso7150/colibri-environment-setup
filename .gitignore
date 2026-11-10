@@ -1,5 +1,12 @@
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 *.log
 .DS_Store
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+node_modules/
+dist/
+release*/
