@@ -5,8 +5,9 @@ import json
 import sys
 
 from colibri_setup import detect, recommend, load_manifest
+from colibri_setup.config import KEYS
 from colibri_setup.provision import (add_plan_options, plan_from_args, print_plan,
-                                     execute_plan)
+                                     execute_plan, update_installed)
 
 
 def main(argv=None):
@@ -16,6 +17,13 @@ def main(argv=None):
     p = sub.add_parser("detect", help="read-only hardware probes")
     p.add_argument("--disk")
     sub.add_parser("features", help="list explicit feature dependencies")
+    p = sub.add_parser("update", help="fast-forward every installed clean checkout")
+    p.add_argument("--manifest", default=argparse.SUPPRESS)
+    p.add_argument("--root", help="clean layout root")
+    p.add_argument("--config", help="shared config path")
+    for key in KEYS:
+        if key != "ctx":
+            p.add_argument("--" + key.replace("_", "-"))
     for name in ("plan", "fetch", "install"):
         p = sub.add_parser(name)
         p.add_argument("--manifest", default=argparse.SUPPRESS)
@@ -31,6 +39,11 @@ def main(argv=None):
         if args.command == "features":
             for name, spec in manifest["features"].items():
                 print(f"{name:14s} {spec['description']}\n  requires: {', '.join(spec['requires'])}")
+            return 0
+        if args.command == "update":
+            count = update_installed(manifest, root=args.root, config=args.config,
+                                     overrides={key: getattr(args, key, None) for key in KEYS})
+            print(f"Updated {count} checkout(s).")
             return 0
         planning = args.command == "plan" or args.dry_run
         if args.json and not planning:

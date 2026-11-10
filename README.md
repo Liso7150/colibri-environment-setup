@@ -53,6 +53,7 @@ python setup.py plan --all --json              # machine-readable, read-only
 python setup.py fetch --features inference,desktop
 python setup.py install --features inference,desktop
 python setup.py install --features inference --build --model <model-dir>
+python setup.py update                         # fast-forward every installed clean checkout
 ```
 
 `plan`/`--dry-run` never clone, install, write the config or start a server.
@@ -60,6 +61,9 @@ python setup.py install --features inference --build --model <model-dir>
 venv, installs the selected dependencies, optionally builds the native engine
 target, and writes the shared config only after every action succeeded. Servers
 are never started for you; the plan prints the exact commands to run.
+`update` runs `git pull --ff-only` for the installed suite checkouts, refuses
+dirty/ahead/foreign checkouts, and leaves the engine checkout alone (update it
+deliberately with `fetch --features … --update`).
 
 Or use the **[installer](https://github.com/Liso7150/colibri-installer)**, which
 bootstraps this hub, detects your device and walks you through feature selection
@@ -72,12 +76,13 @@ iOS are PWA clients of a Colibri host.
 | Feature | Requires | Notes |
 |---|---|---|
 | `inference` | engine, core, cli | Local engine plus the shared runtime/CLI |
-| `desktop` | engine, core, desktop, coding-agent | Electron app; packaging is a separate step |
-| `coding-agent` | engine, core, coding-agent | Shared agent server plus web/PWA UI |
-| `jetbrains` | engine, core, jetbrains | IDE plugin; package it separately |
+| `desktop` | engine, core, desktop, coding-agent (+ faster-whisper, av<18) | Electron app; packaging is a separate step |
+| `coding-agent` | engine, core, coding-agent (+ faster-whisper, av<18) | Shared agent server plus web/PWA UI |
+| `jetbrains` | engine, core, jetbrains (+ faster-whisper, av<18) | IDE plugin; package it separately |
+| `speech` | core (+ faster-whisper, av<18) | Local STT sidecar on 127.0.0.1:8183, started on demand |
 | `npu` | core (+ `openvino`) | Embedding sidecar only, **not** a decoder |
 | `fine-tune` | engine, finetune (+ torch/airllm/...) | Explicit opt-in; nothing downloads or trains implicitly |
-| `mobile` | core, coding-agent | PWA on the same device (desktop or Termux phone); engine starts on demand |
+| `mobile` | core, coding-agent (+ faster-whisper, av<18) | PWA on the same device (desktop or Termux phone); engine starts on demand |
 | `installer` | installer | Download the portable bootstrap itself |
 
 ## Tests

@@ -12,7 +12,7 @@ from pathlib import Path
 from .config import (ROOTS, action_environment, resolve_config, resolved_manifest,
                      write_config)
 from .devices import detect, recommend
-from .fetch import repos_for_features, validate_checkout, fetch_repo
+from .fetch import repos_for_features, validate_checkout, fetch_repo, update_installed
 
 
 class InstallError(RuntimeError):

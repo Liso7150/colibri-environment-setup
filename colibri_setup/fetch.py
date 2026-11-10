@@ -137,3 +137,27 @@ def fetch(features, manifest=None, update=False, *, config=None, root=None, over
     for repo in repos:
         validate_checkout(repo, update=update)
     return [fetch_repo(repo, update=update) for repo in repos]
+
+
+def update_installed(manifest, *, config=None, root=None, overrides=None, emit=print):
+    """Fast-forward every clean installed checkout; local work is never reset."""
+    values, _ = resolve_config(manifest, config=config, root=root, overrides=overrides)
+    repos = [repo for repo in resolved_manifest(manifest, values)["repos"]
+             if Path(repo["local"]).exists()]
+    updatable = [repo for repo in repos if repo["concept"] != "engine"]
+    if not updatable:
+        raise FetchError(f"No updateable Colibri checkouts under {values['suite_root']}; install first")
+    updated, failed = 0, []
+    for repo in repos:
+        if repo["concept"] == "engine":
+            emit("skip engine: update it deliberately with fetch --features … --update")
+            continue
+        try:
+            emit(fetch_repo(repo, update=True))
+            updated += 1
+        except (FetchError, OSError) as exc:
+            failed.append(repo["concept"])
+            emit(f"skip {repo['concept']}: {exc}")
+    if failed:
+        raise FetchError(f"Not updated: {', '.join(failed)}; commit, stash or fix those checkouts")
+    return updated
