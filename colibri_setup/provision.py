@@ -140,8 +140,8 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
         run.append({"label": "shared agent (reads shared config)", "argv": [entry]})
     if "desktop" in locations:
         run.append({"label": "desktop", "argv": ["npm", "start"], "cwd": locations["desktop"]})
-    if "mobile" in features or dev.client_only:
-        warnings.append("Mobile = shared core + coding-agent web PWA on a desktop host. Open that host's PWA in Android/iOS over a trusted HTTPS connection; no native phone inference or automatic public exposure.")
+    if "mobile" in features or dev.client_only or dev.termux:
+        warnings.append("Mobile = shared core + coding-agent PWA, on the same device (Termux) or reached from another device over trusted HTTPS with COLIBRI_APP_TOKEN. The engine starts on demand; there is no automatic public exposure.")
     if dev.client_only:
         actions = []
         missing.append("Android/iOS is PWA client mode only: execute this installation plan on a Windows/macOS/Linux host")

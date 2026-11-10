@@ -8,7 +8,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from colibri_setup.devices import Device  # noqa: E402
+from unittest import mock
+
+from colibri_setup import devices  # noqa: E402
+from colibri_setup.devices import Device, detect, recommend  # noqa: E402
 from colibri_setup.fetch import load_manifest, repos_for_features  # noqa: E402
 from colibri_setup.provision import (build_plan, print_plan, selected_features)  # noqa: E402
 
@@ -44,6 +47,36 @@ def device(**overrides):
 
 def slash(path):
     return str(path).replace("\\", "/")
+
+
+class DeviceDetectionTests(unittest.TestCase):
+    def probe_patches(self, system):
+        return (mock.patch.object(devices.platform, "system", return_value=system),
+                mock.patch.object(devices, "_ram_gb", return_value=8.0),
+                mock.patch.object(devices, "_nvidia_gpus", return_value=[]),
+                mock.patch.object(devices, "_vulkan_gpus", return_value=[]),
+                mock.patch.object(devices, "_has_intel_npu", return_value=False))
+
+    def test_termux_is_local_not_client_only(self):
+        patches = self.probe_patches("Android")
+        with patches[0], patches[1], patches[2], patches[3], patches[4], \
+                mock.patch.dict("os.environ", {"PREFIX": "/data/data/com.termux/files/usr"}):
+            dev = detect(disk_path=ROOT)
+        self.assertEqual(dev.os, "Android")
+        self.assertTrue(dev.termux)
+        self.assertFalse(dev.client_only)
+        self.assertEqual(recommend(dev)["features"], ["mobile"])
+        self.assertIn("Termux", recommend(dev)["note"])
+
+    def test_android_browser_stays_client_only(self):
+        patches = self.probe_patches("Android")
+        with patches[0], patches[1], patches[2], patches[3], patches[4], \
+                mock.patch.dict("os.environ", {"PREFIX": "", "ANDROID_ROOT": ""}):
+            dev = detect(disk_path=ROOT)
+        self.assertTrue(dev.client_only)
+        self.assertFalse(dev.termux)
+        self.assertEqual(recommend(dev)["features"], ["mobile"])
+        self.assertIn("PWA client only", recommend(dev)["note"])
 
 
 class PlanTests(unittest.TestCase):
@@ -91,6 +124,15 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(plan["actions"], [])
         self.assertFalse(plan["config_write"])
         self.assertTrue(any("PWA client mode" in message for message in plan["missing"]))
+
+    def test_termux_plan_installs_the_local_core(self):
+        plan = self.plan(features=("mobile",), dev=device(termux=True))
+        labels = [action["label"] for action in plan["actions"]]
+        self.assertIn("create shared venv", labels)
+        self.assertIn("install editable core", labels)
+        self.assertTrue(plan["config_write"])
+        self.assertTrue(plan["run"])
+        self.assertTrue(any("same device" in message for message in plan["warnings"]))
 
     def test_engine_uses_the_launcher_with_the_selected_model(self):
         model = self.home / "model"

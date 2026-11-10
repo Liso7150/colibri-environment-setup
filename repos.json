@@ -25,7 +25,7 @@
     "jetbrains": {"requires": ["engine", "core", "jetbrains"], "description": "Local engine and agent for the IDE plugin."},
     "npu": {"requires": ["core"], "pip": ["openvino"], "description": "Optional NPU embeddings, NOT native model decoding."},
     "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm", "torch", "transformers", "accelerate", "safetensors", "huggingface_hub"], "description": "Explicit opt-in to large training dependencies."},
-    "mobile": {"requires": ["core", "coding-agent"], "description": "Host the shared web PWA on a computer; Android/iOS connect as clients, no phone inference."},
+    "mobile": {"requires": ["core", "coding-agent"], "description": "Shared core + PWA on the same device (Termux phone or desktop); the local engine starts on demand."},
     "installer": {"requires": ["installer"], "description": "Download the portable bootstrap itself."}
   }
 }

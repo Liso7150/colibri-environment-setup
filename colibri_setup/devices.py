@@ -38,6 +38,7 @@ class Device:
     vulkan: bool = False
     metal: bool = False
     client_only: bool = False
+    termux: bool = False
     disk_free_gb: float = 0.0
     disk_path: str = ""
     python: str = ""
@@ -143,9 +144,11 @@ def _has_intel_npu():
 
 def detect(disk_path=None):
     system = platform.system()
-    if system == "Android" or hasattr(sys, "getandroidapilevel") or os.environ.get("ANDROID_ROOT") or "com.termux" in os.environ.get("PREFIX", ""):
+    termux = "com.termux" in os.environ.get("PREFIX", "")
+    if system == "Android" or hasattr(sys, "getandroidapilevel") or (os.environ.get("ANDROID_ROOT") and not termux):
         system = "Android"
-    client_only = system.lower() in ("android", "ios", "ipados")
+    # Termux is a Linux userspace on the phone: it can host the core and PWA.
+    client_only = system.lower() in ("android", "ios", "ipados") and not termux
     disk = Path(disk_path or Path.home()).expanduser()
     while not disk.exists() and disk != disk.parent:
         disk = disk.parent
@@ -169,7 +172,7 @@ def detect(disk_path=None):
         os=system, os_version=platform.release(), arch=platform.machine(),
         cpu_cores=os.cpu_count() or 0, ram_gb=_ram_gb(), gpu=gpus, npu=npu,
         cuda=bool(nvidia), vulkan=bool(vk), metal=bool(metal), client_only=client_only,
-        disk_free_gb=round(free, 1), disk_path=str(disk),
+        termux=termux, disk_free_gb=round(free, 1), disk_path=str(disk),
         python=platform.python_version(), tier=tier,
     )
 
@@ -187,8 +190,13 @@ def recommend(dev: Device):
         note += " NPU is an embedding sidecar only, not a decoder."
     if dev.client_only:
         note = "Android/iOS: PWA client only. Run the shared agent and engine on a Windows/macOS/Linux host."
+    elif dev.termux:
+        note = ("Termux on Android: the local core and PWA run on this phone. "
+                "On-device engine inference needs a compatible small model and an unverified ARM build; "
+                "the 35B model does not fit.")
     return {"backend": "cpu", "candidate_backend": dev.tier, "policy": "balanced", "ctx": ctx,
-            "auto_tier": False, "features": ["mobile"] if dev.client_only else ["inference"], "note": note}
+            "auto_tier": False, "features": ["mobile"] if (dev.client_only or dev.termux) else ["inference"],
+            "note": note}
 
 
 if __name__ == "__main__":

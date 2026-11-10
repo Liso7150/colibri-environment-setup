@@ -36,6 +36,13 @@ resolved through one config file, `~/.colibri/config.json` (override with
 workspace defaults to `suite_root`. Caches (`HF_HOME`, pip, npm) are kept under
 `cache_root` and never inside the repos.
 
+Pass `--root /path` to keep every checkout and cache under one folder:
+`ROOT/engine`, `ROOT/suite`, `ROOT/models`, `ROOT/cache`, with this hub at
+`ROOT/setup`. The installer prompts for that destination interactively (default
+`~/Colibri`) and downloads nothing before you confirm. The shared config
+`~/.colibri/config.json` is the only file written outside the chosen root, since
+every Colibri app reads it.
+
 ## Usage
 
 ```bash
@@ -56,8 +63,9 @@ are never started for you; the plan prints the exact commands to run.
 
 Or use the **[installer](https://github.com/Liso7150/colibri-installer)**, which
 bootstraps this hub, detects your device and walks you through feature selection
-(`python install.py`). Phones are PWA clients: the hub refuses on-device engine
-installation on Android/iOS and points at a desktop host instead.
+(`python install.py`). Phones can run the core and PWA locally in Termux, with
+the engine on demand when a compatible small model exists; Android browsers and
+iOS are PWA clients of a Colibri host.
 
 ## Features
 
