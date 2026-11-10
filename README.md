@@ -77,7 +77,7 @@ iOS are PWA clients of a Colibri host.
 | `jetbrains` | engine, core, jetbrains | IDE plugin; package it separately |
 | `npu` | core (+ `openvino`) | Embedding sidecar only, **not** a decoder |
 | `fine-tune` | engine, finetune (+ torch/airllm/...) | Explicit opt-in; nothing downloads or trains implicitly |
-| `mobile` | core, coding-agent | PWA client over a trusted connection; no phone inference |
+| `mobile` | core, coding-agent | PWA on the same device (desktop or Termux phone); engine starts on demand |
 | `installer` | installer | Download the portable bootstrap itself |
 
 ## Tests
