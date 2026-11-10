@@ -18,7 +18,7 @@ This suite builds on two upstream projects:
 
 | Concept | Repo | Local path |
 |---|---|---|
-| Engine + CLI | `Liso7150/colibri` | `D:/Colibri` |
+| Engine + CLI | `JustVugg/colibri` (upstream) | `D:/Colibri` |
 | Shared core | `Liso7150/colibri-core` | `D:/Colibri-Suite/colibri-core` |
 | CLI wrapper | `Liso7150/colibri-cli` | `D:/Colibri-Suite/colibri-cli` |
 | Desktop app | `Liso7150/colibri-code` | `D:/Colibri-Suite/colibri-code` |
@@ -30,6 +30,13 @@ This suite builds on two upstream projects:
 The `D:` paths above are the legacy layout, used only on a Windows machine where
 those directories already exist. Everywhere else the same layout lives under
 `~/Colibri`, `~/Colibri-Suite`, `~/colibri-models` and `~/.cache/colibri`.
+
+The engine comes from upstream `JustVugg/colibri` at `main` — no fork is used. The
+local stack launcher + Vulkan/serve-probe patch is maintained separately in the
+private [colibri-patch](https://github.com/Liso7150/colibri-patch) repo and applied
+with `git am` (its README has the commands). `fetch`/`update` refuse to touch an
+engine checkout that sits on another branch or carries local commits, so a patched
+engine is never reset or fast-forwarded behind your back.
 Roots, shared venv (`<engine_root>/.venv`), interpreter and workspace are all
 resolved through one config file, `~/.colibri/config.json` (override with
 `COLIBRI_CONFIG`), and the matching `COLIBRI_*` environment variables. The

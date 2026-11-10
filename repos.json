@@ -9,7 +9,7 @@
     {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference and streamed LoRA training"}
   ],
   "repos": [
-    {"concept": "engine", "repo": "Liso7150/colibri", "upstream": "JustVugg/colibri", "branch": "feat/local-inference-toolkit", "description": "Native engine checkout; c/coli, not a second pip-installed coli script."},
+    {"concept": "engine", "repo": "JustVugg/colibri", "branch": "main", "description": "Native engine checkout from upstream; c/coli, not a second pip-installed coli script. Local patches are applied separately with git am from the private colibri-patch repo."},
     {"concept": "core", "repo": "Liso7150/colibri-core", "branch": "main", "description": "Shared agent runtime; pyproject supplies fastapi, uvicorn, psutil and colibri-agent."},
     {"concept": "cli", "repo": "Liso7150/colibri-cli", "branch": "main", "description": "The only pip-installed coli CLI."},
     {"concept": "desktop", "repo": "Liso7150/colibri-code", "branch": "main", "description": "Electron desktop application."},
