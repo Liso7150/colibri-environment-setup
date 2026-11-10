@@ -80,7 +80,7 @@ iOS are PWA clients of a Colibri host.
 | `coding-agent` | engine, core, coding-agent (+ faster-whisper, av<18) | Shared agent server plus web/PWA UI |
 | `jetbrains` | engine, core, jetbrains (+ faster-whisper, av<18) | IDE plugin; package it separately |
 | `speech` | core (+ faster-whisper, av<18) | Local STT sidecar on 127.0.0.1:8183, started on demand |
-| `npu` | core (+ `openvino`) | Embedding sidecar only, **not** a decoder |
+| `npu` | core (+ `openvino`, `openvino-tokenizers`, `numpy`, `huggingface-hub`) | Accelerator sidecar only, **not** a decoder; fetches the prebuilt IR embedding model into `<models_root>/embed/bge-base-en-v1.5-int8-ov` (no optimum-intel, no torch) |
 | `fine-tune` | engine, finetune (+ torch/airllm/...) | Explicit opt-in; nothing downloads or trains implicitly |
 | `mobile` | core, coding-agent (+ faster-whisper, av<18) | PWA on the same device (desktop or Termux phone); engine starts on demand |
 | `installer` | installer | Download the portable bootstrap itself |

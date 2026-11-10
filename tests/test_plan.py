@@ -27,7 +27,8 @@ def manifest():
             "desktop": {"requires": ["engine", "core", "desktop", "coding-agent"]},
             "coding-agent": {"requires": ["engine", "core", "coding-agent"]},
             "jetbrains": {"requires": ["engine", "core", "jetbrains"]},
-            "npu": {"requires": ["core"], "pip": ["openvino"]},
+            "npu": {"requires": ["core"],
+                    "pip": ["openvino", "openvino-tokenizers", "numpy", "huggingface-hub"]},
             "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm", "torch"]},
             "mobile": {"requires": ["core", "coding-agent"]},
             "installer": {"requires": ["installer"]},
@@ -159,6 +160,32 @@ class PlanTests(unittest.TestCase):
         action = next(action for action in plan["actions"] if "native target" in action["label"])
         self.assertEqual(action["argv"][-1], "colibri")
         self.assertNotIn(".exe", " ".join(action["argv"]))
+
+    def test_npu_feature_provisions_the_sidecar_packages_and_ir_model(self):
+        plan = self.plan(features=("inference", "npu"))
+        labels = [action["label"] for action in plan["actions"]]
+        self.assertIn("install selected optional dependencies", labels)
+        self.assertIn("fetch the sidecar embedding model (prebuilt OpenVINO IR)", labels)
+        install = next(action for action in plan["actions"]
+                       if action["label"] == "install selected optional dependencies")
+        for package in ("openvino", "openvino-tokenizers", "numpy", "huggingface-hub"):
+            self.assertIn(package, install["argv"])
+        for banned in ("optimum", "torch", "nncf"):
+            self.assertFalse(any(banned in package for package in install["argv"]),
+                             f"{banned} would be dragged into the shared interpreter")
+        fetch = next(action for action in plan["actions"]
+                     if action["label"] == "fetch the sidecar embedding model (prebuilt OpenVINO IR)")
+        self.assertIn("OpenVINO/bge-base-en-v1.5-int8-ov", " ".join(fetch["argv"]))
+        self.assertEqual(fetch["argv"][-1].replace("\\", "/"),
+                         slash(self.home / "models") + "/embed/bge-base-en-v1.5-int8-ov")
+        self.assertTrue(any("sidecar" in message for message in plan["warnings"]))
+
+    def test_shipped_manifest_covers_every_sidecar_import(self):
+        packages = load_manifest()["features"]["npu"]["pip"]
+        for package in ("openvino", "openvino-tokenizers", "numpy", "huggingface-hub"):
+            self.assertIn(package, packages)
+        self.assertFalse([p for p in packages if "optimum" in p or p == "torch"],
+                         "the IR model is downloaded, so no exporter belongs in the sidecar set")
 
     def test_unknown_feature_rejected(self):
         with self.assertRaises(ValueError):

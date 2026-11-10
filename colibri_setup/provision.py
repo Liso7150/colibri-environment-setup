@@ -19,6 +19,12 @@ class InstallError(RuntimeError):
     pass
 
 
+# Prebuilt OpenVINO IR embedding model for the accelerator sidecar. Downloading
+# this instead of exporting it keeps optimum-intel, and therefore torch/nncf, out
+# of the interpreter that the Colibri engine also uses.
+EMBED_IR_REPO = "OpenVINO/bge-base-en-v1.5-int8-ov"
+
+
 def selected_features(manifest, features=None, all_features=False):
     if all_features and features:
         raise ValueError("Choose either --all or --features, not both")
@@ -91,6 +97,18 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
                     requires=[f"{project}/pyproject.toml"])
         if packages:
             add("install selected optional dependencies", [python, "-m", "pip", "install", *packages])
+        if "npu" in features:
+            # The desktop/IDE sidecar imports openvino from this same interpreter and
+            # looks for IR under models_root/embed, so provision both in place.
+            embed_dir = f"{values['models_root']}/embed/{EMBED_IR_REPO.split('/')[1]}"
+            add("fetch the sidecar embedding model (prebuilt OpenVINO IR)",
+                [python, "-c",
+                 "import sys; from huggingface_hub import snapshot_download; "
+                 "snapshot_download(repo_id=sys.argv[1], local_dir=sys.argv[2])",
+                 EMBED_IR_REPO, embed_dir],
+                requires=[python])
+            warnings.append("The NPU/iGPU sidecar runs the device probe and the batched code index only; token generation stays on the Colibri engine.")
+            warnings.append("The sidecar uses prebuilt OpenVINO IR, so optimum-intel (and the torch/nncf tree behind it) is never installed here.")
     if "desktop" in locations:
         project = locations["desktop"]
         for tool in ("node", "npm"):

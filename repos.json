@@ -24,7 +24,7 @@
     "coding-agent": {"requires": ["engine", "core", "coding-agent"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local inference plus shared coding-agent server and web UI; pip deps are the local STT sidecar."},
     "jetbrains": {"requires": ["engine", "core", "jetbrains"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local engine and agent for the IDE plugin; pip deps are the local STT sidecar."},
     "speech": {"requires": ["core"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local speech-to-text sidecar (faster-whisper CPU) for the core and PWA; av<18 because PyAV 18 removed metadata_errors."},
-    "npu": {"requires": ["core"], "pip": ["openvino"], "description": "Optional NPU embeddings, NOT native model decoding."},
+    "npu": {"requires": ["core"], "pip": ["openvino", "openvino-tokenizers", "numpy", "huggingface-hub"], "description": "Accelerator sidecar packages (device probe + batched code index) for the interpreter the apps use; the embedding model is a prebuilt OpenVINO IR download, so optimum-intel and torch are never installed here. Never native token decoding."},
     "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm", "torch", "transformers", "accelerate", "safetensors", "huggingface_hub"], "description": "Explicit opt-in to large training dependencies."},
     "mobile": {"requires": ["core", "coding-agent"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Shared core + PWA on the same device (Termux phone or desktop); the local engine starts on demand; pip deps are the local STT sidecar."},
     "installer": {"requires": ["installer"], "description": "Download the portable bootstrap itself."}
