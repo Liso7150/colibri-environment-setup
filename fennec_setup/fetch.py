@@ -146,11 +146,11 @@ def update_installed(manifest, *, config=None, root=None, overrides=None, emit=p
              if Path(repo["local"]).exists()]
     updatable = [repo for repo in repos if repo["concept"] != "engine"]
     if not updatable:
-        raise FetchError(f"No updateable Colibri checkouts under {values['suite_root']}; install first")
+        raise FetchError(f"No updateable Fennec checkouts under {values['suite_root']}; install first")
     updated, failed = 0, []
     for repo in repos:
         if repo["concept"] == "engine":
-            emit("skip engine: update it deliberately with fetch --features … --update")
+            emit(f"skip engine ({repo['repo']}): update it deliberately with fetch --features … --update")
             continue
         try:
             emit(fetch_repo(repo, update=True))
@@ -160,4 +160,6 @@ def update_installed(manifest, *, config=None, root=None, overrides=None, emit=p
             emit(f"skip {repo['concept']}: {exc}")
     if failed:
         raise FetchError(f"Not updated: {', '.join(failed)}; commit, stash or fix those checkouts")
+    for credit in manifest.get("credits", []):
+        emit(f"Upstream: {credit['name']} — {credit['upstream']} ({credit['role']}); not pulled by this command")
     return updated

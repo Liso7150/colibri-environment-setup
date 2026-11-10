@@ -49,10 +49,10 @@ class SetupCliTests(unittest.TestCase):
     def test_update_pulls_every_installed_checkout(self):
         import importlib
         from unittest import mock
-        fetch_module = importlib.import_module("colibri_setup.fetch")
+        fetch_module = importlib.import_module("fennec_setup.fetch")
         with tempfile.TemporaryDirectory() as directory:
             suite = Path(directory) / "suite"
-            for name in ("colibri-core", "colibri-code"):
+            for name in ("fennec-core", "fennec-desktop"):
                 (suite / name / ".git").mkdir(parents=True)
             with mock.patch.object(fetch_module, "fetch_repo", return_value="updated") as update:
                 code, out, err = self.run_main([
@@ -60,6 +60,8 @@ class SetupCliTests(unittest.TestCase):
                     str(Path(directory) / "config.json")])
         self.assertEqual(code, 0, err)
         self.assertIn("Updated 2 checkout(s)", out)
+        self.assertIn("JustVugg/colibri", out)
+        self.assertIn("lyogavin/airllm", out)
         self.assertEqual(update.call_count, 2)
 
     def test_update_without_checkouts_fails_honestly(self):
@@ -69,7 +71,7 @@ class SetupCliTests(unittest.TestCase):
                 "--engine-root", str(Path(directory) / "no-engine"),
                 "--config", str(Path(directory) / "config.json")])
         self.assertEqual(code, 1)
-        self.assertIn("No updateable Colibri checkouts", err)
+        self.assertIn("No updateable Fennec checkouts", err)
 
 
 if __name__ == "__main__":

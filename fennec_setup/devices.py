@@ -1,4 +1,4 @@
-"""Cross-platform device detection for the Colibri installer/setup.
+"""Cross-platform device detection for the Fennec installer/setup.
 
 Detects OS, arch, CPU/RAM, GPU (NVIDIA CUDA + Vulkan), Intel NPU (OpenVINO), and
 free disk on the model/cache drive. Degrades gracefully when a probe is missing

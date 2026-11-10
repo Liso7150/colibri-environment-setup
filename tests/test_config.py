@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from colibri_setup.config import KEYS, read_config, resolve_config, validate_config, write_config  # noqa: E402
+from fennec_setup.config import KEYS, read_config, resolve_config, validate_config, write_config  # noqa: E402
 
 SYSTEM = platform.system()
 
@@ -19,7 +19,7 @@ def slash(path):
 
 SHARED_CASES = [
     ({}, True),
-    ({"engine_root": "/opt/colibri", "ctx": 4096}, True),
+    ({"engine_root": "/opt/fennec", "ctx": 4096}, True),
     ({"model": ""}, True),
     ({"backend": "vulkan"}, True),
     ({"policy": "experimental-fast"}, True),
@@ -55,16 +55,16 @@ REMOTE = {"engine_url": "http://192.168.1.5:8184"}
 
 def _locate_core():
     candidates = []
-    if os.environ.get("COLIBRI_CORE_DIR"):
-        candidates.append(Path(os.environ["COLIBRI_CORE_DIR"]))
+    if os.environ.get("FENNEC_CORE_DIR"):
+        candidates.append(Path(os.environ["FENNEC_CORE_DIR"]))
     try:
         manifest = json.loads((ROOT / "repos.json").read_text(encoding="utf-8"))
-        candidates.append(Path(manifest["suite_root"]) / "colibri-core")
+        candidates.append(Path(manifest["suite_root"]) / "fennec-core")
     except (OSError, ValueError, KeyError):
         pass
-    candidates.append(ROOT.parent / "colibri-core")
+    candidates.append(ROOT.parent / "fennec-core")
     for candidate in candidates:
-        if (candidate / "colibri_core" / "config.py").is_file():
+        if (candidate / "fennec_core" / "config.py").is_file():
             return candidate
     return None
 
@@ -99,15 +99,15 @@ class ValidateConfigTests(unittest.TestCase):
         # Stricter than the runtime loader: an unknown key in a config the
         # installer writes could smuggle a secret past the secret-name filter.
         with self.assertRaises(ValueError):
-            validate_config({"engine_root": "/opt/colibri", "api-key": "x"})
+            validate_config({"engine_root": "/opt/fennec", "api-key": "x"})
 
 
-@unittest.skipUnless(_locate_core(), "colibri-core checkout not available")
+@unittest.skipUnless(_locate_core(), "fennec-core checkout not available")
 class CoreParityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         sys.path.insert(0, str(_locate_core()))
-        import colibri_core.config as core
+        import fennec_core.config as core
         cls.core = core
 
     def test_validator_parity(self):
@@ -160,8 +160,8 @@ class DefaultsTests(unittest.TestCase):
     def test_portable_roots_and_workspace_follow_suite(self):
         values = self.resolve()
         self.assertEqual(values["workspace"], values["suite_root"])
-        self.assertEqual(values["workspace"], slash(self.home / "Colibri-Suite"))
-        self.assertEqual(values["web_root"], slash(self.home / "Colibri-Suite/colibri-coding-agent/web"))
+        self.assertEqual(values["workspace"], slash(self.home / "Fennec-Suite"))
+        self.assertEqual(values["web_root"], slash(self.home / "Fennec-Suite/fennec-coding-agent/web"))
         self.assertEqual(values["engine_url"], "http://127.0.0.1:8184")
 
     def test_explicit_suite_root_moves_workspace(self):
@@ -169,7 +169,7 @@ class DefaultsTests(unittest.TestCase):
         self.assertEqual(values["workspace"], slash(self.home / "Suite"))
 
     def test_environment_workspace_and_config_path(self):
-        self.env["COLIBRI_WORKSPACE"] = slash(self.home / "ws")
+        self.env["FENNEC_WORKSPACE"] = slash(self.home / "ws")
         values = self.resolve()
         self.assertEqual(values["workspace"], slash(self.home / "ws"))
 

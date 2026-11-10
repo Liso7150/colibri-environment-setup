@@ -10,17 +10,17 @@ sys.path.insert(0, str(ROOT))
 
 from unittest import mock
 
-from colibri_setup import devices  # noqa: E402
-from colibri_setup.devices import Device, detect, recommend  # noqa: E402
-from colibri_setup.fetch import load_manifest, repos_for_features  # noqa: E402
-from colibri_setup.provision import (build_plan, print_plan, selected_features)  # noqa: E402
+from fennec_setup import devices  # noqa: E402
+from fennec_setup.devices import Device, detect, recommend  # noqa: E402
+from fennec_setup.fetch import load_manifest, repos_for_features  # noqa: E402
+from fennec_setup.provision import (build_plan, print_plan, selected_features)  # noqa: E402
 
 CONCEPTS = ("engine", "core", "cli", "desktop", "coding-agent", "jetbrains", "installer", "finetune")
 
 
 def manifest():
     return {
-        "repos": [{"concept": concept, "repo": f"Liso7150/colibri-{concept}", "branch": "main"}
+        "repos": [{"concept": concept, "repo": f"Liso7150/fennec-{concept}", "branch": "main"}
                   for concept in CONCEPTS],
         "features": {
             "inference": {"requires": ["engine", "core", "cli"]},
@@ -158,7 +158,7 @@ class PlanTests(unittest.TestCase):
     def test_build_without_a_model_uses_a_real_make_target(self):
         plan = self.plan(build=True)
         action = next(action for action in plan["actions"] if "native target" in action["label"])
-        self.assertEqual(action["argv"][-1], "colibri")
+        self.assertEqual(action["argv"][-1], "fennec")
         self.assertNotIn(".exe", " ".join(action["argv"]))
 
     def test_npu_feature_provisions_the_sidecar_packages_and_ir_model(self):
@@ -231,6 +231,8 @@ class ManifestTests(unittest.TestCase):
         upstreams = " ".join(entry["upstream"] for entry in credits)
         self.assertIn("JustVugg/colibri", upstreams)
         self.assertIn("lyogavin/airllm", upstreams)
+        engine = next(entry for entry in credits if "JustVugg/colibri" in entry["upstream"])
+        self.assertIn("base idea", engine["role"])
 
 
 if __name__ == "__main__":

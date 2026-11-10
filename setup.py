@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Plan, fetch and provision only the explicitly selected Colibri features."""
+"""Plan, fetch and provision only the explicitly selected Fennec features."""
 import argparse
 import json
 import sys
 
-from colibri_setup import detect, recommend, load_manifest
-from colibri_setup.config import KEYS
-from colibri_setup.provision import (add_plan_options, plan_from_args, print_plan,
+from fennec_setup import detect, recommend, load_manifest
+from fennec_setup.config import KEYS
+from fennec_setup.provision import (add_plan_options, plan_from_args, print_plan,
                                      execute_plan, update_installed)
 
 

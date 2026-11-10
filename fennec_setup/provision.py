@@ -37,7 +37,7 @@ def selected_features(manifest, features=None, all_features=False):
 
 
 def build_plan(manifest, features, *, root=None, config=None, overrides=None,
-               build=False, native_target="colibri", update=False, device=None,
+               build=False, native_target="fennec", update=False, device=None,
                environ=None, home=None):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", native_target):
         raise ValueError("Native target must be a simple Makefile target, not options or shell text")
@@ -154,12 +154,12 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
                              "--ctx", str(values["ctx"]), "--policy", values["policy"],
                              "--host", "127.0.0.1", "--port", "8184"]})
     if "core" in locations:
-        entry = str(Path(python).parent / ("colibri-agent.exe" if windows else "colibri-agent"))
+        entry = str(Path(python).parent / ("fennec-agent.exe" if windows else "fennec-agent"))
         run.append({"label": "shared agent (reads shared config)", "argv": [entry]})
     if "desktop" in locations:
         run.append({"label": "desktop", "argv": ["npm", "start"], "cwd": locations["desktop"]})
     if "mobile" in features or dev.client_only or dev.termux:
-        warnings.append("Mobile = shared core + coding-agent PWA, on the same device (Termux) or reached from another device over trusted HTTPS with COLIBRI_APP_TOKEN. The engine starts on demand; there is no automatic public exposure.")
+        warnings.append("Mobile = shared core + coding-agent PWA, on the same device (Termux) or reached from another device over trusted HTTPS with FENNEC_APP_TOKEN. The engine starts on demand; there is no automatic public exposure.")
     if dev.client_only:
         actions = []
         missing.append("Android/iOS is PWA client mode only: execute this installation plan on a Windows/macOS/Linux host")
@@ -191,7 +191,7 @@ def print_plan(plan, machine=False):
     for message in plan["missing"] + plan["warnings"]:
         print("  NOTE: " + message)
     for credit in plan["credits"]:
-        print(f"Credit: {credit['name']} — {credit['upstream']}")
+        print(f"Credit: {credit['name']} — {credit['upstream']} ({credit['role']})")
 
 
 def _run_action(action, env):
@@ -235,7 +235,7 @@ def execute_plan(plan, *, install=False, emit=print):
             if not Path(required).is_file():
                 raise InstallError(f"Missing {required}; cannot {action['label']}. Configuration was not written.")
     env = action_environment(plan["config"])
-    env["COLIBRI_CONFIG"] = plan["config_path"]
+    env["FENNEC_CONFIG"] = plan["config_path"]
     for action in plan["actions"]:
         emit("Running: " + action["label"])
         _run_action(action, env)
@@ -257,12 +257,12 @@ def add_plan_options(parser):
     selection.add_argument("--features", help="comma-separated feature names")
     selection.add_argument("--all", action="store_true", help="every feature, including installer and training")
     parser.add_argument("--root", help="clean layout: ROOT/{engine,suite,models,cache}")
-    parser.add_argument("--config", help="shared config path; default COLIBRI_CONFIG or ~/.colibri/config.json")
+    parser.add_argument("--config", help="shared config path; default FENNEC_CONFIG or ~/.fennec/config.json")
     for key in ROOTS + ("python", "model", "engine_url", "web_root", "workspace", "backend", "policy"):
         parser.add_argument("--" + key.replace("_", "-"))
     parser.add_argument("--ctx", type=int)
     parser.add_argument("--build", action="store_true", help="include/execute the selected native target with install")
-    parser.add_argument("--native-target", default="colibri", help="engine c/Makefile target when no model is selected (default colibri)")
+    parser.add_argument("--native-target", default="fennec", help="engine c/Makefile target when no model is selected (default fennec)")
     parser.add_argument("--update", action="store_true", help="fast-forward clean matching tracked branches only")
     parser.add_argument("--json", action="store_true", help="machine-readable plan (plan mode only)")
 

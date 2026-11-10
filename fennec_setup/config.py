@@ -13,14 +13,14 @@ from urllib.parse import urlsplit
 
 ROOTS = ("engine_root", "suite_root", "models_root", "cache_root")
 KEYS = set(ROOTS) | {"python", "model", "engine_url", "web_root", "workspace", "backend", "ctx", "policy"}
-ENV = {"engine_root": "COLIBRI_HOME", "models_root": "COLIBRI_MODELS",
-       "cache_root": "COLIBRI_CACHE", "python": "COLIBRI_PYTHON",
-       "model": "COLIBRI_MODEL", "engine_url": "COLIBRI_ENGINE_URL",
-       "workspace": "COLIBRI_WORKSPACE"}
-LEGACY = dict(zip(ROOTS, ("D:/Colibri", "D:/Colibri-Suite", "D:/colibri-models", "D:/.cache")))
-PORTABLE = dict(zip(ROOTS, ("~/Colibri", "~/Colibri-Suite", "~/colibri-models", "~/.cache/colibri")))
-# Mirrors colibri-core/colibri_core/config.py (authoritative shared schema).
-SECRETS = {"api_key", "app_token", "token", "colibri_api_key", "colibri_app_token", "coli_api_key"}
+ENV = {"engine_root": "FENNEC_HOME", "models_root": "FENNEC_MODELS",
+       "cache_root": "FENNEC_CACHE", "python": "FENNEC_PYTHON",
+       "model": "FENNEC_MODEL", "engine_url": "FENNEC_ENGINE_URL",
+       "workspace": "FENNEC_WORKSPACE"}
+LEGACY = dict(zip(ROOTS, ("D:/Colibri", "D:/Fennec-Suite", "D:/fennec-models", "D:/.cache")))
+PORTABLE = dict(zip(ROOTS, ("~/Colibri", "~/Fennec-Suite", "~/fennec-models", "~/.cache/fennec")))
+# Mirrors fennec-core/fennec_core/config.py (authoritative shared schema).
+SECRETS = {"api_key", "app_token", "token", "fennec_api_key", "fennec_app_token", "coli_api_key"}
 BACKENDS = ("auto", "vulkan", "metal", "cpu")
 POLICIES = ("quality", "balanced", "experimental-fast")
 
@@ -54,14 +54,14 @@ def absolute(value, *, system=None, home=None, base=None):
 
 def config_path(value=None, *, environ=None, home=None):
     env = os.environ if environ is None else environ
-    return Path(absolute(value or env.get("COLIBRI_CONFIG") or str(Path(home or Path.home()) / ".colibri/config.json")))
+    return Path(absolute(value or env.get("FENNEC_CONFIG") or str(Path(home or Path.home()) / ".fennec/config.json")))
 
 
 def validate_config(data, *, environ=None):
     if not isinstance(data, dict):
         raise ValueError("Shared config must be a JSON object")
     if any(k.lower() in SECRETS for k in data):
-        raise ValueError("Secrets belong in environment variables (COLIBRI_API_KEY/COLI_API_KEY), not configuration JSON")
+        raise ValueError("Secrets belong in environment variables (FENNEC_API_KEY/COLI_API_KEY), not configuration JSON")
     if set(data) - KEYS:
         raise ValueError("Shared config must contain only supported runtime keys; never store secrets here")
     for key, value in data.items():
@@ -84,8 +84,8 @@ def validate_config(data, *, environ=None):
     if not valid:
         raise ValueError("engine_url must be an HTTP(S) origin without credentials, port 0, path, query or fragment")
     if environ is not None and not is_loopback(url.hostname):
-        if not (environ.get("COLIBRI_API_KEY") or environ.get("COLI_API_KEY")):
-            raise ValueError("A non-loopback engine requires COLIBRI_API_KEY or COLI_API_KEY in the environment")
+        if not (environ.get("FENNEC_API_KEY") or environ.get("COLI_API_KEY")):
+            raise ValueError("A non-loopback engine requires FENNEC_API_KEY or COLI_API_KEY in the environment")
 
 
 def read_config(path, *, environ=None):
@@ -128,12 +128,12 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
     # Derived paths follow changed roots, unless explicitly configured themselves.
     if (root or "suite_root" in explicit) and "web_root" not in explicit:
         values.pop("web_root", None)
-    if (root or "engine_root" in explicit) and "python" not in explicit and not env.get("COLIBRI_PYTHON"):
+    if (root or "engine_root" in explicit) and "python" not in explicit and not env.get("FENNEC_PYTHON"):
         values.pop("python", None)
     defaults = recommendation or {}
     values.setdefault("python", f"{values['engine_root']}/.venv/" + ("Scripts/python.exe" if system == "Windows" else "bin/python"))
     values.setdefault("engine_url", "http://127.0.0.1:8184")
-    values.setdefault("web_root", f"{values['suite_root']}/colibri-coding-agent/web")
+    values.setdefault("web_root", f"{values['suite_root']}/fennec-coding-agent/web")
     values.setdefault("workspace", values["suite_root"])
     values.setdefault("backend", defaults.get("backend", "cpu"))
     values.setdefault("ctx", defaults.get("ctx", 2048))
