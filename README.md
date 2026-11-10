@@ -18,14 +18,14 @@ This suite builds on two upstream projects:
 
 | Concept | Repo | Local path |
 |---|---|---|
-| Engine + CLI | `JustVugg/colibri` (upstream) | `D:/Colibri` |
-| Shared core | `Liso7150/fennec-core` | `D:/Fennec-Suite/fennec-core` |
-| CLI wrapper | `Liso7150/fennec-cli` | `D:/Fennec-Suite/fennec-cli` |
-| Desktop app | `Liso7150/fennec-desktop` | `D:/Fennec-Suite/fennec-desktop` |
-| Coding agent | `Liso7150/fennec-coding-agent` | `D:/Fennec-Suite/fennec-coding-agent` |
-| JetBrains | `Liso7150/fennec-jetbrains` | `D:/Fennec-Suite/fennec-jetbrains` |
-| Installer | `Liso7150/fennec-installer` | `D:/Fennec-Suite/fennec-installer` |
-| Fine-tune | `Liso7150/fennec-finetune` | `D:/Fennec-Suite/fennec-finetune` |
+| Engine + CLI | `JustVugg/colibri` (upstream) | `~/Colibri` |
+| Shared core | `Liso7150/fennec-core` | `~/Fennec-Suite/fennec-core` |
+| CLI wrapper | `Liso7150/fennec-cli` | `~/Fennec-Suite/fennec-cli` |
+| Desktop app | `Liso7150/fennec-desktop` | `~/Fennec-Suite/fennec-desktop` |
+| Coding agent | `Liso7150/fennec-coding-agent` | `~/Fennec-Suite/fennec-coding-agent` |
+| JetBrains | `Liso7150/fennec-jetbrains` | `~/Fennec-Suite/fennec-jetbrains` |
+| Installer | `Liso7150/fennec-installer` | `~/Fennec-Suite/fennec-installer` |
+| Fine-tune | `Liso7150/fennec-finetune` | `~/Fennec-Suite/fennec-finetune` |
 
 The `D:` paths above are the legacy layout, used only on a Windows machine where
 those directories already exist. Everywhere else the same layout lives under
@@ -73,7 +73,7 @@ dirty/ahead/foreign checkouts, and leaves the engine checkout alone (update it
 deliberately with `fetch --features … --update`). Both upstream credits stay in
 the update output and neither is pulled by it: the engine base idea
 [JustVugg/colibri](https://github.com/JustVugg/colibri) is updated on purpose in
-`D:/Colibri`, and [lyogavin/airllm](https://github.com/lyogavin/airllm) with
+`~/Colibri`, and [lyogavin/airllm](https://github.com/lyogavin/airllm) with
 `python -m pip install -U airllm` in the shared venv.
 
 Or use the **[installer](https://github.com/Liso7150/fennec-installer)**, which

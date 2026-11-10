@@ -17,6 +17,9 @@ ENV = {"engine_root": "FENNEC_HOME", "models_root": "FENNEC_MODELS",
        "cache_root": "FENNEC_CACHE", "python": "FENNEC_PYTHON",
        "model": "FENNEC_MODEL", "engine_url": "FENNEC_ENGINE_URL",
        "workspace": "FENNEC_WORKSPACE"}
+# Pre-Fennec Windows paths an old manifest or config may still carry. They are
+# recognised so they can be migrated, but never chosen as a default: not every
+# machine has a D: drive, and the installer lets the user pick any drive.
 LEGACY = dict(zip(ROOTS, ("D:/Colibri", "D:/Fennec-Suite", "D:/fennec-models", "D:/.cache")))
 PORTABLE = dict(zip(ROOTS, ("~/Colibri", "~/Fennec-Suite", "~/fennec-models", "~/.cache/fennec")))
 # Mirrors fennec-core/fennec_core/config.py (authoritative shared schema).
@@ -113,7 +116,7 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
     for key in ROOTS:
         candidate = manifest.get(key)
         if not candidate or candidate == LEGACY[key]:
-            candidate = LEGACY[key] if system == "Windows" and exists(Path(LEGACY[key])) else PORTABLE[key]
+            candidate = PORTABLE[key]
         values[key] = candidate
     values.update(saved)
     values.update({k: env[e] for k, e in ENV.items() if env.get(e)})

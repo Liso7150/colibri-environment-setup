@@ -1,9 +1,9 @@
 {
   "account": "Liso7150",
-  "suite_root": "D:/Fennec-Suite",
-  "engine_root": "D:/Colibri",
-  "models_root": "D:/fennec-models",
-  "cache_root": "D:/.cache",
+  "suite_root": "~/Fennec-Suite",
+  "engine_root": "~/Colibri",
+  "models_root": "~/fennec-models",
+  "cache_root": "~/.cache/fennec",
   "credits": [
     {"name": "Colibri engine", "upstream": "https://github.com/JustVugg/colibri", "role": "base idea of the engine: device-tiered MoE inference"},
     {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference and streamed LoRA training"}
