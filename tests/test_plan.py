@@ -129,7 +129,8 @@ class PlanTests(unittest.TestCase):
     def test_termux_plan_installs_the_local_core(self):
         plan = self.plan(features=("mobile",), dev=device(termux=True))
         labels = [action["label"] for action in plan["actions"]]
-        self.assertIn("create shared venv", labels)
+        self.assertIn("verify pip", labels)
+        self.assertNotIn("create shared venv", labels)
         self.assertIn("install editable core", labels)
         self.assertTrue(plan["config_write"])
         self.assertTrue(plan["run"])

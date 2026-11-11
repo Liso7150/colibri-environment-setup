@@ -63,7 +63,7 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
     if not shutil.which("git"):
         missing.append("Git: install Git and add it to PATH before fetching")
     if sys.version_info < (3, 10):
-        missing.append("Python: use Python 3.10+ with venv and pip")
+        missing.append("Python: use Python 3.10+ with pip")
     packages = []
     visited = set()
     def dependencies(feature):
@@ -81,14 +81,10 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
         raise ValueError("Invalid dependency specification")
     python = values["python"]
     windows = dev.os == "Windows"
-    expected_python = f"{values['engine_root']}/.venv/" + ("Scripts/python.exe" if windows else "bin/python")
     needs_python = bool({"core", "cli"} & locations.keys() or packages)
     if needs_python:
-        if python.replace("\\", "/") == expected_python:
-            # Running venv again is safe for an existing selected virtual environment.
-            add("create shared venv", [sys.executable, "-m", "venv", f"{values['engine_root']}/.venv"])
-        elif not Path(python).is_file():
-            missing.append(f"Python: configured interpreter not found: {python}")
+        if not shutil.which(python) and not Path(python).is_file():
+            missing.append(f"Python: install Python 3.10+ on PATH or set FENNEC_PYTHON (configured: {python})")
         add("verify pip", [python, "-m", "pip", "--version"])
         for concept in ("core", "cli"):
             if concept in locations:
@@ -154,7 +150,9 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
                              "--ctx", str(values["ctx"]), "--policy", values["policy"],
                              "--host", "127.0.0.1", "--port", "8184"]})
     if "core" in locations:
-        entry = str(Path(python).parent / ("fennec-agent.exe" if windows else "fennec-agent"))
+        base = Path(shutil.which(python) or python).parent
+        scripts = base if base.name.lower() in ("scripts", "bin") else base / ("Scripts" if windows else "bin")
+        entry = str(scripts / ("fennec-agent.exe" if windows else "fennec-agent"))
         run.append({"label": "shared agent (reads shared config)", "argv": [entry]})
     if "desktop" in locations:
         run.append({"label": "desktop", "argv": ["npm", "start"], "cwd": locations["desktop"]})

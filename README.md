@@ -37,7 +37,7 @@ private [fennec-patch](https://github.com/Liso7150/fennec-patch) repo and applie
 with `git am` (its README has the commands). `fetch`/`update` refuse to touch an
 engine checkout that sits on another branch or carries local commits, so a patched
 engine is never reset or fast-forwarded behind your back.
-Roots, shared venv (`<engine_root>/.venv`), interpreter and workspace are all
+Roots, interpreter and workspace are all
 resolved through one config file, `~/.fennec/config.json` (override with
 `FENNEC_CONFIG`), and the matching `FENNEC_*` environment variables. The
 workspace defaults to `suite_root`. Caches (`HF_HOME`, pip, npm) are kept under
@@ -64,8 +64,8 @@ python setup.py update                         # fast-forward every installed cl
 ```
 
 `plan`/`--dry-run` never clone, install, write the config or start a server.
-`fetch` only clones/verifies checkouts. `install` additionally creates the shared
-venv, installs the selected dependencies, optionally builds the native engine
+`fetch` only clones/verifies checkouts. `install` additionally provisions
+`python` on PATH with the selected dependencies, optionally builds the native engine
 target, and writes the shared config only after every action succeeded. Servers
 are never started for you; the plan prints the exact commands to run.
 `update` runs `git pull --ff-only` for the installed suite checkouts, refuses
@@ -74,7 +74,7 @@ deliberately with `fetch --features … --update`). Both upstream credits stay i
 the update output and neither is pulled by it: the engine base idea
 [JustVugg/colibri](https://github.com/JustVugg/colibri) is updated on purpose in
 `~/Colibri`, and [lyogavin/airllm](https://github.com/lyogavin/airllm) with
-`python -m pip install -U airllm` in the shared venv.
+`python -m pip install -U airllm` in the interpreter the apps use.
 
 Or use the **[installer](https://github.com/Liso7150/fennec-installer)**, which
 bootstraps this hub, detects your device and walks you through feature selection

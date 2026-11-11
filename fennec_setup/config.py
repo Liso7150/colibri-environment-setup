@@ -133,17 +133,22 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
         values.pop("web_root", None)
     if (root or "engine_root" in explicit) and "python" not in explicit and not env.get("FENNEC_PYTHON"):
         values.pop("python", None)
+    # The engine venv used to be the derived default; `python` on PATH is now it.
+    retired = f"{values['engine_root']}/.venv/" + ("Scripts/python.exe" if system == "Windows" else "bin/python")
+    if str(values.get("python", "")).replace("\\", "/") == retired:
+        values.pop("python", None)
     defaults = recommendation or {}
-    values.setdefault("python", f"{values['engine_root']}/.venv/" + ("Scripts/python.exe" if system == "Windows" else "bin/python"))
+    values.setdefault("python", "python")
     values.setdefault("engine_url", "http://127.0.0.1:8184")
     values.setdefault("web_root", f"{values['suite_root']}/fennec-coding-agent/web")
     values.setdefault("workspace", values["suite_root"])
     values.setdefault("backend", defaults.get("backend", "cpu"))
     values.setdefault("ctx", defaults.get("ctx", 2048))
     values.setdefault("policy", defaults.get("policy", "balanced"))
-    for key in ("python", "web_root", "workspace"):
-        if key in values:
-            values[key] = absolute(values[key], system=system, home=home)
+    for key in ("web_root", "workspace"):
+        values[key] = absolute(values[key], system=system, home=home)
+    if re.search(r"[~/\\]", values["python"]):
+        values["python"] = absolute(values["python"], system=system, home=home)
     if values.get("model"):
         values["model"] = absolute(values["model"], system=system, home=home, base=values["models_root"])
     validate_config(values, environ=env)
