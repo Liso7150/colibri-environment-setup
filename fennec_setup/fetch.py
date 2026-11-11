@@ -121,6 +121,11 @@ def fetch_repo(repo, update=False):
     local = Path(repo["local"])
     if validate_checkout(repo, update=update):
         if update:
+            if _is_upstream(repo):
+                # "cloned only" has to mean the update path too, or a routine
+                # `fetch --update` moves someone else's program under the core.
+                return (f"left {repo['concept']} ({local}) untouched: upstream source, "
+                        "update it with its own commands")
             output = _git(["pull", "--ff-only", "--no-rebase", "origin", repo.get("branch", "main")], cwd=local)
             return f"updated {repo['concept']}: {output}"
         return f"verified {repo['concept']} ({local}); not updated"
@@ -139,18 +144,24 @@ def fetch(features, manifest=None, update=False, *, config=None, root=None, over
     return [fetch_repo(repo, update=update) for repo in repos]
 
 
+def _is_upstream(repo):
+    """Upstream sources (engine, Jev, OpenBot) are never pulled implicitly."""
+    return bool(repo.get("upstream"))
+
+
 def update_installed(manifest, *, config=None, root=None, overrides=None, emit=print):
     """Fast-forward every clean installed checkout; local work is never reset."""
     values, _ = resolve_config(manifest, config=config, root=root, overrides=overrides)
     repos = [repo for repo in resolved_manifest(manifest, values)["repos"]
              if Path(repo["local"]).exists()]
-    updatable = [repo for repo in repos if repo["concept"] != "engine"]
+    updatable = [repo for repo in repos if not _is_upstream(repo)]
     if not updatable:
         raise FetchError(f"No updateable Fennec checkouts under {values['suite_root']}; install first")
     updated, failed = 0, []
     for repo in repos:
-        if repo["concept"] == "engine":
-            emit(f"skip engine ({repo['repo']}): update it deliberately with fetch --features … --update")
+        if _is_upstream(repo):
+            emit(f"skip {repo['concept']} ({repo['repo']}): upstream source, moved only by its own "
+                 f"maintainers - update it inside {repo['local']} if you want to")
             continue
         try:
             emit(fetch_repo(repo, update=True))

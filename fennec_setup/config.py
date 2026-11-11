@@ -12,11 +12,15 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOTS = ("engine_root", "suite_root", "models_root", "cache_root")
-KEYS = set(ROOTS) | {"python", "model", "engine_url", "web_root", "workspace", "backend", "ctx", "policy"}
+# Mirrors fennec-core/fennec_core/config.py: jev_root and openbot_url are the two
+# optional browser outlets, so a config written by core validates here too.
+KEYS = set(ROOTS) | {"python", "model", "engine_url", "web_root", "workspace", "backend",
+                     "ctx", "policy", "jev_root", "openbot_url"}
 ENV = {"engine_root": "FENNEC_HOME", "models_root": "FENNEC_MODELS",
        "cache_root": "FENNEC_CACHE", "python": "FENNEC_PYTHON",
        "model": "FENNEC_MODEL", "engine_url": "FENNEC_ENGINE_URL",
-       "workspace": "FENNEC_WORKSPACE"}
+       "workspace": "FENNEC_WORKSPACE", "jev_root": "FENNEC_JEV_ROOT",
+       "openbot_url": "FENNEC_OPENBOT_URL"}
 # Pre-Fennec Windows paths an old manifest or config may still carry. They are
 # recognised so they can be migrated, but never chosen as a default: not every
 # machine has a D: drive, and the installer lets the user pick any drive.
@@ -71,8 +75,8 @@ def validate_config(data, *, environ=None):
         if key == "ctx":
             if type(value) is not int or not 0 <= value <= 1_048_576:
                 raise ValueError("ctx must be an integer from 0 (automatic) to 1048576")
-        elif not isinstance(value, str) or (not value.strip() and key != "model"):
-            raise ValueError(f"{key} must be a nonempty string (omit an unselected model)")
+        elif not isinstance(value, str) or (not value.strip() and key not in {"model", "jev_root"}):
+            raise ValueError(f"{key} must be a nonempty string (omit an unselected model or outlet)")
     if data.get("backend", "auto") not in BACKENDS:
         raise ValueError("backend must be auto, vulkan, metal or cpu; NPU is not a decoder")
     if data.get("policy", "quality") not in POLICIES:
@@ -89,6 +93,18 @@ def validate_config(data, *, environ=None):
     if environ is not None and not is_loopback(url.hostname):
         if not (environ.get("FENNEC_API_KEY") or environ.get("COLI_API_KEY")):
             raise ValueError("A non-loopback engine requires FENNEC_API_KEY or COLI_API_KEY in the environment")
+    if data.get("openbot_url"):
+        # The outlet itself may only be loopback (core refuses to drive a remote
+        # OpenBot), but the hub only checks the shape of what the user wrote.
+        try:
+            outlet = urlsplit(data["openbot_url"])
+            valid = (outlet.scheme in ("http", "https") and outlet.hostname and outlet.port != 0
+                     and not outlet.username and not outlet.password and outlet.path in ("", "/")
+                     and not outlet.query and not outlet.fragment)
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError("openbot_url must be an HTTP(S) origin without credentials, path, query or fragment")
 
 
 def read_config(path, *, environ=None):
@@ -151,6 +167,10 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
         values["python"] = absolute(values["python"], system=system, home=home)
     if values.get("model"):
         values["model"] = absolute(values["model"], system=system, home=home, base=values["models_root"])
+    # Unset jev_root is a feature, not an omission: the core probes its own default
+    # locations, including suite_root/jev-ultrafast, so no absolute path is written.
+    if values.get("jev_root"):
+        values["jev_root"] = absolute(values["jev_root"], system=system, home=home, base=path.parent)
     validate_config(values, environ=env)
     return values, path
 

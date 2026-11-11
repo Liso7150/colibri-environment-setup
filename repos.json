@@ -6,17 +6,21 @@
   "cache_root": "~/.cache/fennec",
   "credits": [
     {"name": "Colibri engine", "upstream": "https://github.com/JustVugg/colibri", "role": "base idea of the engine: device-tiered MoE inference"},
-    {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference and streamed LoRA training"}
+    {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference and streamed LoRA training"},
+    {"name": "Jev", "upstream": "https://github.com/browser-use/jev-ultrafast", "role": "browser agent behind the web_task outlet; reviewed at main cf3c406f0fc4becff8986ed4d4d37b7b9f102e45 and never modified or vendored"},
+    {"name": "OpenBot", "upstream": "https://github.com/CopilotKit/OpenBot", "role": "coworker workspace behind the coworker_task outlet; reviewed at v1.0.2 cca9f609cacf1b53bf5f27fc3ec0465138accb70 and never modified or vendored"}
   ],
   "repos": [
-    {"concept": "engine", "repo": "JustVugg/colibri", "branch": "main", "description": "Native engine checkout from upstream; c/coli, not a second pip-installed coli script. Local patches are applied separately with git am from the private fennec-patch repo."},
+    {"concept": "engine", "repo": "JustVugg/colibri", "branch": "main", "upstream": true, "description": "Native engine checkout from upstream; c/coli, not a second pip-installed coli script. Local patches are applied separately with git am from the private fennec-patch repo."},
     {"concept": "core", "repo": "Liso7150/fennec-core", "branch": "main", "description": "Shared agent runtime; pyproject supplies fastapi, uvicorn, psutil and fennec-agent."},
     {"concept": "cli", "repo": "Liso7150/fennec-cli", "branch": "main", "description": "The only pip-installed coli CLI."},
     {"concept": "desktop", "repo": "Liso7150/fennec-desktop", "branch": "main", "description": "Electron desktop application."},
     {"concept": "coding-agent", "repo": "Liso7150/fennec-coding-agent", "branch": "main", "description": "Coding-agent web/PWA assets served by the shared core."},
     {"concept": "jetbrains", "repo": "Liso7150/fennec-jetbrains", "branch": "main", "description": "IDE integration; plugin packaging is a separate step."},
     {"concept": "installer", "repo": "Liso7150/fennec-installer", "branch": "main", "description": "Portable bootstrap entry point."},
-    {"concept": "finetune", "repo": "Liso7150/fennec-finetune", "branch": "main", "description": "Optional AirLLM streamed LoRA training."}
+    {"concept": "finetune", "repo": "Liso7150/fennec-finetune", "branch": "main", "description": "Optional AirLLM streamed LoRA training."},
+    {"concept": "jev", "repo": "browser-use/jev-ultrafast", "branch": "main", "upstream": true, "description": "Upstream Jev browser agent, cloned only. Fennec drives it through its own jev_ultrafast.Agent API and never edits, patches or vendors it. Its TypeSafe key stays inside this checkout."},
+    {"concept": "openbot", "repo": "CopilotKit/OpenBot", "branch": "main", "upstream": true, "description": "Upstream OpenBot coworker workspace, cloned only. The user installs its dependencies and runs it; Fennec talks to its existing loopback AG-UI routes and never edits, patches or vendors it."}
   ],
   "features": {
     "inference": {"requires": ["engine", "core", "cli"], "description": "Local engine and command-line runtime."},
@@ -27,6 +31,7 @@
     "npu": {"requires": ["core"], "pip": ["openvino", "openvino-tokenizers", "numpy", "huggingface-hub"], "description": "Accelerator sidecar packages (device probe + batched code index) for the interpreter the apps use; the embedding model is a prebuilt OpenVINO IR download, so optimum-intel and torch are never installed here. Never native token decoding."},
     "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm", "torch", "transformers", "accelerate", "safetensors", "huggingface_hub"], "description": "Explicit opt-in to large training dependencies."},
     "mobile": {"requires": ["core", "coding-agent"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Shared core + PWA on the same device (Termux phone or desktop); the local engine starts on demand; pip deps are the local STT sidecar."},
+    "browser-outlets": {"requires": ["core", "jev", "openbot"], "description": "Optional browser agents the shared core can delegate to: Jev (web_task) and OpenBot (coworker_task). Clone-only — upstream sources are never modified, their dependencies are never installed and neither is ever started by this hub."},
     "installer": {"requires": ["installer"], "description": "Download the portable bootstrap itself."}
   }
 }

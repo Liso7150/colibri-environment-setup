@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from fennec_setup.config import KEYS, read_config, resolve_config, validate_config, write_config  # noqa: E402
+from fennec_setup.config import (KEYS, action_environment, read_config, resolve_config,
+                                 validate_config, write_config)  # noqa: E402
 
 SYSTEM = platform.system()
 
@@ -48,6 +49,11 @@ SHARED_CASES = [
     ({"engine_url": "ftp://127.0.0.1:8184"}, False),
     ({"engine_url": "http://127.0.0.1:0"}, False),
     ({"engine_url": "http://192.168.1.5:8184"}, False),
+    ({"jev_root": ""}, True),
+    ({"jev_root": "~/jev-ultrafast"}, True),
+    ({"openbot_url": "http://127.0.0.1:3001"}, True),
+    ({"openbot_url": "https://bot.example"}, True),
+    ({"openbot_url": ""}, False),
 ]
 
 REMOTE = {"engine_url": "http://192.168.1.5:8184"}
@@ -59,9 +65,12 @@ def _locate_core():
         candidates.append(Path(os.environ["FENNEC_CORE_DIR"]))
     try:
         manifest = json.loads((ROOT / "repos.json").read_text(encoding="utf-8"))
-        candidates.append(Path(manifest["suite_root"]) / "fennec-core")
+        candidates.append(Path(manifest["suite_root"]).expanduser() / "fennec-core")
     except (OSError, ValueError, KeyError):
         pass
+    # The hub checkout often sits beside the suite rather than inside it.
+    candidates.append(ROOT.parent / "Fennec-Suite" / "fennec-core")
+    candidates.append(Path.home() / "Fennec-Suite" / "fennec-core")
     candidates.append(ROOT.parent / "fennec-core")
     for candidate in candidates:
         if (candidate / "fennec_core" / "config.py").is_file():
@@ -100,6 +109,17 @@ class ValidateConfigTests(unittest.TestCase):
         # installer writes could smuggle a secret past the secret-name filter.
         with self.assertRaises(ValueError):
             validate_config({"engine_root": "/opt/fennec", "api-key": "x"})
+
+    def test_openbot_origin_shape(self):
+        # Also stricter than the runtime here: a written-down OpenBot address is
+        # only useful if the core can reach it verbatim, so credentials, paths and
+        # non-HTTP schemes are refused before they land in the shared config.
+        for value in ("http://127.0.0.1:3001/api/agents", "http://user:pw@127.0.0.1:3001",
+                      "http://127.0.0.1:3001?t=1", "http://127.0.0.1:0", "ftp://127.0.0.1:3001",
+                      "not a url"):
+            with self.subTest(openbot_url=value):
+                with self.assertRaises(ValueError):
+                    validate_config({"openbot_url": value})
 
 
 @unittest.skipUnless(_locate_core(), "fennec-core checkout not available")
@@ -212,7 +232,30 @@ class KeysTests(unittest.TestCase):
     def test_shared_key_set(self):
         self.assertEqual(KEYS, {"engine_root", "suite_root", "models_root", "cache_root",
                                 "python", "model", "engine_url", "web_root", "workspace",
-                                "backend", "ctx", "policy"})
+                                "backend", "ctx", "policy", "jev_root", "openbot_url"})
+
+    def test_outlet_keys_survive_resolve_and_are_exported_to_actions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            values, _ = resolve_config({}, config=home / "config.json", environ={}, system=SYSTEM,
+                                       home=home, exists=lambda path: False,
+                                       overrides={"jev_root": "browser-tools/jev-ultrafast",
+                                                  "openbot_url": "http://127.0.0.1:3001"})
+            self.assertTrue(values["jev_root"].endswith("/browser-tools/jev-ultrafast"))
+            self.assertEqual(values["openbot_url"], "http://127.0.0.1:3001")
+            env = action_environment(values, {})
+        self.assertEqual(env["FENNEC_JEV_ROOT"], values["jev_root"])
+        self.assertEqual(env["FENNEC_OPENBOT_URL"], "http://127.0.0.1:3001")
+
+    def test_unconfigured_outlets_stay_out_of_the_config(self):
+        # The core probes its own default locations, so writing an absolute
+        # jev_root nobody asked for would pin a path that later breaks.
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            values, _ = resolve_config({}, config=home / "config.json", environ={}, system=SYSTEM,
+                                        home=home, exists=lambda path: False)
+        self.assertNotIn("jev_root", values)
+        self.assertNotIn("openbot_url", values)
 
 
 if __name__ == "__main__":

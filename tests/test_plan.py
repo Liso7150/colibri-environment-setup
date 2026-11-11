@@ -16,12 +16,17 @@ from fennec_setup.fetch import load_manifest, repos_for_features  # noqa: E402
 from fennec_setup.provision import (build_plan, print_plan, selected_features)  # noqa: E402
 
 CONCEPTS = ("engine", "core", "cli", "desktop", "coding-agent", "jetbrains", "installer", "finetune")
+# Someone else's programs: cloned when the user opts into the outlets, never
+# installed into, patched, or pulled by an ordinary update.
+UPSTREAMS = (("jev", "browser-use/jev-ultrafast"), ("openbot", "CopilotKit/OpenBot"))
 
 
 def manifest():
     return {
         "repos": [{"concept": concept, "repo": f"Liso7150/fennec-{concept}", "branch": "main"}
-                  for concept in CONCEPTS],
+                  for concept in CONCEPTS]
+                 + [{"concept": concept, "repo": repo, "branch": "main", "upstream": True}
+                    for concept, repo in UPSTREAMS],
         "features": {
             "inference": {"requires": ["engine", "core", "cli"]},
             "desktop": {"requires": ["engine", "core", "desktop", "coding-agent"]},
@@ -31,6 +36,7 @@ def manifest():
                     "pip": ["openvino", "openvino-tokenizers", "numpy", "huggingface-hub"]},
             "fine-tune": {"requires": ["engine", "finetune"], "pip": ["airllm", "torch"]},
             "mobile": {"requires": ["core", "coding-agent"]},
+            "browser-outlets": {"requires": ["core", "jev", "openbot"]},
             "installer": {"requires": ["installer"]},
         },
         "credits": [],
@@ -181,12 +187,44 @@ class PlanTests(unittest.TestCase):
                          slash(self.home / "models") + "/embed/bge-base-en-v1.5-int8-ov")
         self.assertTrue(any("sidecar" in message for message in plan["warnings"]))
 
+    def test_browser_outlets_are_cloned_and_otherwise_untouched(self):
+        plan = self.plan(features=("inference", "browser-outlets"))
+        locations = {repo["concept"]: repo["local"] for repo in plan["repos"]}
+        self.assertEqual(locations["jev"], slash(self.home / "suite/jev-ultrafast"))
+        self.assertEqual(locations["openbot"], slash(self.home / "suite/OpenBot"))
+        for action in plan["actions"]:
+            joined = " ".join(action["argv"])
+            for outlet in ("jev-ultrafast", "OpenBot"):
+                self.assertNotIn(outlet, joined, f"{action['label']} would install into upstream")
+            self.assertNotIn(action.get("cwd"), {locations["jev"], locations["openbot"]},
+                             f"{action['label']} would run inside an outlet checkout")
+        self.assertTrue(any("cloned only" in message for message in plan["warnings"]))
+        self.assertTrue(any("TypeSafe" in message for message in plan["warnings"]))
+        self.assertTrue(any("loopback" in message for message in plan["warnings"]))
+        # The shared core is what drives both, so it is the only thing installed.
+        self.assertIn("install editable core", [action["label"] for action in plan["actions"]])
+
     def test_shipped_manifest_covers_every_sidecar_import(self):
         packages = load_manifest()["features"]["npu"]["pip"]
         for package in ("openvino", "openvino-tokenizers", "numpy", "huggingface-hub"):
             self.assertIn(package, packages)
         self.assertFalse([p for p in packages if "optimum" in p or p == "torch"],
                          "the IR model is downloaded, so no exporter belongs in the sidecar set")
+
+    def test_the_shared_agent_advice_is_a_runnable_command(self):
+        plan = self.plan()
+        agent = next(command for command in plan["run"] if "shared agent" in command["label"])
+        # A bare fennec-agent only prints "the following arguments are required".
+        self.assertEqual(agent["argv"][-1], "serve")
+        self.assertIn("fennec-agent", Path(agent["argv"][0]).name)
+
+    def test_a_core_without_outlets_says_which_tools_stay_off(self):
+        plan = self.plan(features=("inference",))
+        self.assertTrue(any("web_task" in message and "coworker_task" in message
+                            for message in plan["warnings"]), plan["warnings"])
+        with_outlets = self.plan(features=("inference", "browser-outlets"))
+        self.assertFalse(any("No browser outlet selected" in message
+                             for message in with_outlets["warnings"]))
 
     def test_unknown_feature_rejected(self):
         with self.assertRaises(ValueError):
@@ -232,8 +270,71 @@ class ManifestTests(unittest.TestCase):
         upstreams = " ".join(entry["upstream"] for entry in credits)
         self.assertIn("JustVugg/colibri", upstreams)
         self.assertIn("lyogavin/airllm", upstreams)
+        self.assertIn("browser-use/jev-ultrafast", upstreams)
+        self.assertIn("CopilotKit/OpenBot", upstreams)
         engine = next(entry for entry in credits if "JustVugg/colibri" in entry["upstream"])
         self.assertIn("base idea", engine["role"])
+
+    def test_outlet_upstreams_are_cloned_only(self):
+        repos = {repo["concept"]: repo for repo in self.manifest["repos"]}
+        self.assertEqual(repos["jev"]["repo"], "browser-use/jev-ultrafast")
+        self.assertEqual(repos["openbot"]["repo"], "CopilotKit/OpenBot")
+        for concept in ("jev", "openbot"):
+            self.assertTrue(repos[concept].get("upstream"), concept)
+            self.assertNotEqual(repos[concept]["repo"].split("/")[0], self.manifest["account"])
+        self.assertFalse([repo for repo in self.manifest["repos"]
+                          if repo.get("upstream") and repo["repo"].startswith("Liso7150/")],
+                         "a Fennec-owned checkout must stay updatable by 'update'")
+        spec = self.manifest["features"]["browser-outlets"]
+        self.assertEqual(set(spec["requires"]), {"core", "jev", "openbot"})
+        self.assertNotIn("pip", spec, "the outlets are cloned, never installed into")
+
+    def test_all_includes_the_optional_outlets(self):
+        self.assertIn("browser-outlets",
+                      selected_features(self.manifest, None, all_features=True))
+
+
+class FetchTests(unittest.TestCase):
+    """fetch_repo is the one place that moves a checkout, so it carries the promise."""
+
+    def module(self):
+        # fennec_setup.fetch the attribute is the fetch() function, not the module.
+        import importlib
+        return importlib.import_module("fennec_setup.fetch")
+
+    def repo(self, concept, upstream=False):
+        return {"concept": concept, "repo": f"x/{concept}", "branch": "main",
+                "local": f"/tmp/suite/{concept}", "upstream": upstream}
+
+    def pulled(self, repo, results):
+        fetch_module = self.module()
+        with mock.patch.object(fetch_module, "validate_checkout", return_value=True), \
+             mock.patch.object(fetch_module, "_git", side_effect=results) as git:
+            message = fetch_module.fetch_repo(repo, update=True)
+        return message, [call.args[0] for call in git.call_args_list]
+
+    def test_an_update_pulls_a_fennec_checkout(self):
+        message, calls = self.pulled(self.repo("fennec-core"), ["ok"])
+        self.assertIn("updated fennec-core", message)
+        self.assertEqual(calls[0][:2], ["pull", "--ff-only"])
+
+    def test_an_update_leaves_an_upstream_outlet_where_its_maintainers_put_it(self):
+        for concept in ("jev", "openbot", "engine"):
+            message, calls = self.pulled(self.repo(concept, upstream=True), [])
+            self.assertIn("untouched", message, concept)
+            self.assertEqual(calls, [], f"{concept} was moved by an update")
+
+    def test_a_missing_upstream_is_still_cloned(self):
+        import tempfile
+        fetch_module = self.module()
+        repo = self.repo("jev", upstream=True)
+        with tempfile.TemporaryDirectory() as directory:
+            repo["local"] = str(Path(directory) / "suite" / "jev-ultrafast")
+            with mock.patch.object(fetch_module, "validate_checkout", return_value=False), \
+                 mock.patch.object(fetch_module, "_git", return_value="") as git:
+                message = fetch_module.fetch_repo(repo, update=True)
+        self.assertIn("cloned jev", message)
+        self.assertEqual(git.call_args_list[0].args[0][:2], ["clone", "--branch"])
 
 
 if __name__ == "__main__":

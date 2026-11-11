@@ -139,6 +139,17 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
         warnings.append("JetBrains plugin is fetched only; build/package it separately using its README and JDK/Gradle requirements.")
     if "finetune" in locations:
         warnings.append("Training dependencies are selected; datasets, model weights and training runs are never downloaded/started implicitly.")
+    if "jev" in locations or "openbot" in locations:
+        # The hub is allowed to clone these two and nothing more: they are someone
+        # else's programs, and the shared core drives them from its own process.
+        warnings.append("Browser outlets are cloned only: this hub never modifies, patches, vendors, installs dependencies for or starts jev-ultrafast or OpenBot. Check what the core found with `fennec outlets`.")
+    if "jev" in locations:
+        warnings.append(f"Jev spends the TypeSafe key configured inside its own checkout ({locations['jev']}/.env) or TYPESAFE_API_KEY in its environment; Fennec never reads or stores it.")
+    if "openbot" in locations:
+        warnings.append("OpenBot is a separate Next.js service: set it up and start it with its own README commands, then the core reaches it over loopback AG-UI routes (default http://127.0.0.1:3001, override with --openbot-url or FENNEC_OPENBOT_URL).")
+        warnings.append("OpenBot issues no machine token for its run API, so only a loopback single-user instance is driven; a remote one is refused by the core.")
+    elif "core" in locations:
+        warnings.append("No browser outlet selected, so the core advertises neither web_task nor coworker_task; add --features browser-outlets later to fetch them (cloned only, never started here).")
     if model_status == "missing":
         warnings.append("Inference is NOT ready: no existing model selected. Pass --model /path/to/existing/model. No model download is automatic (35B models can be enormous).")
     if values["backend"] != "cpu":
@@ -153,7 +164,9 @@ def build_plan(manifest, features, *, root=None, config=None, overrides=None,
         base = Path(shutil.which(python) or python).parent
         scripts = base if base.name.lower() in ("scripts", "bin") else base / ("Scripts" if windows else "bin")
         entry = str(scripts / ("fennec-agent.exe" if windows else "fennec-agent"))
-        run.append({"label": "shared agent (reads shared config)", "argv": [entry]})
+        # The advice printed at the end is a command the user types; a bare
+        # fennec-agent only prints argparse and quits.
+        run.append({"label": "shared agent (reads shared config)", "argv": [entry, "serve"]})
     if "desktop" in locations:
         run.append({"label": "desktop", "argv": ["npm", "start"], "cwd": locations["desktop"]})
     if "mobile" in features or dev.client_only or dev.termux:
@@ -256,7 +269,8 @@ def add_plan_options(parser):
     selection.add_argument("--all", action="store_true", help="every feature, including installer and training")
     parser.add_argument("--root", help="clean layout: ROOT/{engine,suite,models,cache}")
     parser.add_argument("--config", help="shared config path; default FENNEC_CONFIG or ~/.fennec/config.json")
-    for key in ROOTS + ("python", "model", "engine_url", "web_root", "workspace", "backend", "policy"):
+    for key in ROOTS + ("python", "model", "engine_url", "web_root", "workspace", "backend",
+                        "policy", "jev_root", "openbot_url"):
         parser.add_argument("--" + key.replace("_", "-"))
     parser.add_argument("--ctx", type=int)
     parser.add_argument("--build", action="store_true", help="include/execute the selected native target with install")
