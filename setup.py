@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from fennec_setup import detect, recommend, load_manifest
+from fennec_setup import __version__, detect, recommend, load_manifest
 from fennec_setup.config import KEYS
 from fennec_setup.provision import (add_plan_options, plan_from_args, print_plan,
                                      execute_plan, update_installed)
@@ -12,11 +12,13 @@ from fennec_setup.provision import (add_plan_options, plan_from_args, print_plan
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=f"fennec-setup {__version__}")
     parser.add_argument("--manifest", help="alternate trusted repos.json")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("detect", help="read-only hardware probes")
     p.add_argument("--disk")
     sub.add_parser("features", help="list explicit feature dependencies")
+    sub.add_parser("version", help="print the hub version")
     p = sub.add_parser("update", help="fast-forward every installed clean checkout")
     p.add_argument("--manifest", default=argparse.SUPPRESS)
     p.add_argument("--root", help="clean layout root")
@@ -39,6 +41,9 @@ def main(argv=None):
         if args.command == "features":
             for name, spec in manifest["features"].items():
                 print(f"{name:14s} {spec['description']}\n  requires: {', '.join(spec['requires'])}")
+            return 0
+        if args.command == "version":
+            print(f"fennec-setup {__version__}")
             return 0
         if args.command == "update":
             count = update_installed(manifest, root=args.root, config=args.config,
