@@ -27,7 +27,7 @@ class SetupCliTests(unittest.TestCase):
     def test_version_prints_the_hub_version(self):
         code, out, _ = self.run_main(["version"])
         self.assertEqual(code, 0)
-        self.assertIn("fennec-setup 1.8.0", out)
+        self.assertIn("fennec-setup 1.8.1", out)
 
     def test_plan_without_selection_fails_honestly(self):
         code, _, err = self.run_main(["plan"])
