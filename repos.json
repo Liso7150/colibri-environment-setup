@@ -1,20 +1,20 @@
 {
   "account": "Liso7150",
   "suite_root": "~/Fennec-Suite",
-  "engine_root": "~/Colibri",
+  "engine_root": "~/Fennec",
   "models_root": "~/fennec-models",
   "cache_root": "~/.cache/fennec",
   "credits": [
-    {"name": "Colibri engine", "upstream": "https://github.com/JustVugg/colibri", "role": "base idea of the engine: device-tiered MoE inference"},
+    {"name": "Colibri engine", "upstream": "https://github.com/JustVugg/colibri", "role": "base idea of the engine: device-tiered MoE inference; its c/coli launcher remains the legacy fallback for an engine_root that has no Fennec binary"},
     {"name": "AirLLM", "upstream": "https://github.com/lyogavin/airllm", "role": "layer-streamed inference and streamed LoRA training"},
     {"name": "Jev", "upstream": "https://github.com/browser-use/jev-ultrafast", "role": "browser agent behind the web_task outlet; reviewed at main cf3c406f0fc4becff8986ed4d4d37b7b9f102e45 and never modified or vendored"},
     {"name": "OpenBot", "upstream": "https://github.com/CopilotKit/OpenBot", "role": "coworker workspace behind the coworker_task outlet; reviewed at v1.0.2 cca9f609cacf1b53bf5f27fc3ec0465138accb70 and never modified or vendored"}
   ],
   "repos": [
-    {"concept": "engine", "repo": "JustVugg/colibri", "branch": "main", "upstream": true, "description": "Native engine checkout from upstream; c/coli, not a second pip-installed coli script. Local patches are applied separately with git am from the private fennec-patch repo."},
+    {"concept": "engine", "repo": "Liso7150/fennec", "branch": "main", "description": "Fennec, the native Rust engine: cargo build --release produces target/release/fennec(.exe), launched directly with the serve/run/info/plan/doctor verbs. Legacy fallback: an existing JustVugg/colibri checkout at any configured engine_root still works, because its c/coli launcher speaks the same CLI verbs and the same OpenAI-compatible HTTP contract; Fennec wins when both are present."},
     {"concept": "core", "repo": "Liso7150/fennec-core", "branch": "main", "description": "Shared agent runtime; pyproject supplies fastapi, uvicorn, psutil and fennec-agent."},
-    {"concept": "cli", "repo": "Liso7150/fennec-cli", "branch": "main", "description": "The only pip-installed coli CLI."},
-    {"concept": "desktop", "repo": "Liso7150/fennec-desktop", "branch": "main", "description": "Electron desktop application."},
+    {"concept": "cli", "repo": "Liso7150/fennec-cli", "branch": "main", "description": "The only pip-installed Fennec CLI; the engine itself is a native cargo-built binary, not a pip package."},
+    {"concept": "desktop", "repo": "Liso7150/fennec-desktop", "branch": "main", "description": "Native Rust (egui) desktop application."},
     {"concept": "coding-agent", "repo": "Liso7150/fennec-coding-agent", "branch": "main", "description": "Coding-agent web/PWA assets served by the shared core."},
     {"concept": "jetbrains", "repo": "Liso7150/fennec-jetbrains", "branch": "main", "description": "IDE integration; plugin packaging is a separate step."},
     {"concept": "installer", "repo": "Liso7150/fennec-installer", "branch": "main", "description": "Portable bootstrap entry point."},
@@ -23,8 +23,8 @@
     {"concept": "openbot", "repo": "CopilotKit/OpenBot", "branch": "main", "upstream": true, "description": "Upstream OpenBot coworker workspace, cloned only. The user installs its dependencies and runs it; Fennec talks to its existing loopback AG-UI routes and never edits, patches or vendors it."}
   ],
   "features": {
-    "inference": {"requires": ["engine", "core", "cli"], "description": "Local engine and command-line runtime."},
-    "desktop": {"requires": ["engine", "core", "desktop", "coding-agent"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Electron desktop with shared agent and web UI; pip deps are the local STT sidecar."},
+    "inference": {"requires": ["engine", "core", "cli"], "description": "Local Fennec engine (native Rust, cargo build --release) and command-line runtime; a legacy Colibri c/coli checkout is still launched when no Fennec binary is built."},
+    "desktop": {"requires": ["engine", "core", "desktop"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Native Rust desktop on the shared agent server and engine; pip deps are the local STT sidecar."},
     "coding-agent": {"requires": ["engine", "core", "coding-agent"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local inference plus shared coding-agent server and web UI; pip deps are the local STT sidecar."},
     "jetbrains": {"requires": ["engine", "core", "jetbrains"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local engine and agent for the IDE plugin; pip deps are the local STT sidecar."},
     "speech": {"requires": ["core"], "pip": ["faster-whisper==1.2.1", "av>=14,<18"], "description": "Local speech-to-text sidecar (faster-whisper CPU) for the core and PWA; av<18 because PyAV 18 removed metadata_errors."},

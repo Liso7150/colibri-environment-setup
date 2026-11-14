@@ -24,11 +24,19 @@ ENV = {"engine_root": "FENNEC_HOME", "models_root": "FENNEC_MODELS",
 # Pre-Fennec Windows paths an old manifest or config may still carry. They are
 # recognised so they can be migrated, but never chosen as a default: not every
 # machine has a D: drive, and the installer lets the user pick any drive.
-LEGACY = dict(zip(ROOTS, ("D:/Colibri", "D:/Fennec-Suite", "D:/fennec-models", "D:/.cache")))
-PORTABLE = dict(zip(ROOTS, ("~/Colibri", "~/Fennec-Suite", "~/fennec-models", "~/.cache/fennec")))
+LEGACY = dict(zip(ROOTS, ("D:/Fennec", "D:/Fennec-Suite", "D:/fennec-models", "D:/.cache")))
+PORTABLE = dict(zip(ROOTS, ("~/Fennec", "~/Fennec-Suite", "~/fennec-models", "~/.cache/fennec")))
+# The engine was the Colibri Python launcher before Fennec. Both spellings of its
+# root stay recognised as legacy manifest values, and a Colibri checkout already
+# on disk is the fallback engine root: c/coli speaks the same verbs and the same
+# OpenAI-compatible HTTP contract, so nothing an old install has is orphaned.
+ENGINE_LEGACY = ("D:/Colibri", "~/Colibri")
+ENGINE_FALLBACK = "~/Colibri"
+LEGACY_VALUES = {key: (LEGACY[key],) for key in ROOTS}
+LEGACY_VALUES["engine_root"] += ENGINE_LEGACY
 # Mirrors fennec-core/fennec_core/config.py (authoritative shared schema).
 SECRETS = {"api_key", "app_token", "token", "fennec_api_key", "fennec_app_token", "coli_api_key"}
-BACKENDS = ("auto", "vulkan", "metal", "cpu")
+BACKENDS = ("auto", "cuda", "vulkan", "metal", "cpu")
 POLICIES = ("quality", "balanced", "experimental-fast")
 
 
@@ -129,9 +137,14 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
     if unknown:
         raise ValueError(f"Unsupported overrides: {sorted(unknown)}")
     values = {}
+    # The shipped manifest already names ~/Fennec, which is the default rather
+    # than a user choice, so it still allows the Colibri fallback below.
+    engine_choice = manifest.get("engine_root")
+    engine_defaulted = (not engine_choice or engine_choice == PORTABLE["engine_root"]
+                        or engine_choice in LEGACY_VALUES["engine_root"])
     for key in ROOTS:
         candidate = manifest.get(key)
-        if not candidate or candidate == LEGACY[key]:
+        if not candidate or candidate in LEGACY_VALUES[key]:
             candidate = PORTABLE[key]
         values[key] = candidate
     values.update(saved)
@@ -140,6 +153,15 @@ def resolve_config(manifest, *, root=None, config=None, overrides=None, environ=
         root = absolute(root, system=system, home=home)
         values.update(dict(zip(ROOTS, (f"{root}/engine", f"{root}/suite", f"{root}/models", f"{root}/cache"))))
     values.update(explicit)
+    # Fennec first, Colibri only as a fallback, and only when nothing chose an
+    # engine root: a manifest default plus an existing Colibri checkout keeps an
+    # old install launching instead of pointing at an empty ~/Fennec.
+    if (engine_defaulted and not root and "engine_root" not in saved
+            and "engine_root" not in explicit and not env.get(ENV["engine_root"])):
+        fennec = Path(absolute(PORTABLE["engine_root"], system=system, home=home))
+        colibri = Path(absolute(ENGINE_FALLBACK, system=system, home=home))
+        if not exists(fennec) and exists(colibri):
+            values["engine_root"] = str(colibri).replace("\\", "/")
     # Reject empty strings and invalid enums before normalizing paths.
     validate_config(values, environ=env)
     for key in ROOTS:

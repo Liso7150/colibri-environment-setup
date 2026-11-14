@@ -31,7 +31,8 @@ SHARED_CASES = [
     ({"api_key": "x"}, False),
     ({"token": "x"}, False),
     ({"coli_api_key": "x"}, False),
-    ({"backend": "cuda"}, False),
+    ({"backend": "cuda"}, True),
+    ({"backend": "rocm"}, False),
     ({"backend": "npu"}, False),
     ({"backend": ""}, False),
     ({"policy": "speed"}, False),
@@ -102,7 +103,10 @@ class ValidateConfigTests(unittest.TestCase):
     def test_remote_engine_requires_environment_key(self):
         with self.assertRaises(ValueError):
             validate_config(REMOTE, environ={})
-        validate_config(REMOTE, environ={"COLI_API_KEY": "k"})
+        # Fennec reads both names, so the COLI_API_KEY alias keeps working.
+        for alias in ("COLI_API_KEY", "FENNEC_API_KEY"):
+            with self.subTest(alias=alias):
+                validate_config(REMOTE, environ={alias: "k"})
 
     def test_unknown_keys_refused_although_runtime_ignores_them(self):
         # Stricter than the runtime loader: an unknown key in a config the
@@ -183,6 +187,42 @@ class DefaultsTests(unittest.TestCase):
         self.assertEqual(values["workspace"], slash(self.home / "Fennec-Suite"))
         self.assertEqual(values["web_root"], slash(self.home / "Fennec-Suite/fennec-coding-agent/web"))
         self.assertEqual(values["engine_url"], "http://127.0.0.1:8184")
+        self.assertEqual(values["engine_root"], slash(self.home / "Fennec"))
+
+    def test_a_legacy_colibri_manifest_root_is_upgraded_to_fennec(self):
+        for legacy in ("~/Colibri", "~/Fennec"):
+            with self.subTest(legacy=legacy):
+                values = self.resolve(manifest={"engine_root": legacy})
+                self.assertEqual(values["engine_root"], slash(self.home / "Fennec"))
+
+    def test_an_existing_colibri_checkout_is_the_fallback_engine_root(self):
+        # Nothing chose a root and only the legacy engine is on disk: keep it
+        # launchable instead of pointing at an empty ~/Fennec.
+        for manifest in ({}, {"engine_root": "~/Fennec"}):
+            with self.subTest(manifest=manifest):
+                values = self.resolve(manifest=manifest, exists=self.only_colibri)
+                self.assertEqual(values["engine_root"], slash(self.home / "Colibri"))
+
+    def test_fennec_wins_when_both_roots_exist(self):
+        values = self.resolve(exists=lambda path: True)
+        self.assertEqual(values["engine_root"], slash(self.home / "Fennec"))
+
+    def test_a_chosen_engine_root_is_never_replaced_by_the_fallback(self):
+        values = self.resolve(exists=self.only_colibri,
+                              overrides={"engine_root": slash(self.home / "chosen")})
+        self.assertEqual(values["engine_root"], slash(self.home / "chosen"))
+        self.env["FENNEC_HOME"] = slash(self.home / "env-engine")
+        values = self.resolve(exists=self.only_colibri)
+        self.assertEqual(values["engine_root"], slash(self.home / "env-engine"))
+
+    def test_a_saved_colibri_config_survives_the_fennec_default(self):
+        path = self.home / "config.json"
+        path.write_text(json.dumps({"engine_root": "~/Colibri"}), encoding="utf-8")
+        values = self.resolve(exists=lambda path: False)
+        self.assertEqual(values["engine_root"], slash(self.home / "Colibri"))
+
+    def only_colibri(self, path):
+        return slash(path).endswith("/Colibri")
 
     def test_explicit_suite_root_moves_workspace(self):
         values = self.resolve(overrides={"suite_root": slash(self.home / "Suite")})

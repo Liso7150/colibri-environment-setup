@@ -145,7 +145,11 @@ def fetch(features, manifest=None, update=False, *, config=None, root=None, over
 
 
 def _is_upstream(repo):
-    """Upstream sources (engine, Jev, OpenBot) are never pulled implicitly."""
+    """Upstream sources (Jev, OpenBot) are never pulled implicitly.
+
+    The engine is Liso7150/fennec now, so it updates like every other Fennec
+    checkout; a legacy JustVugg/colibri entry marked upstream stays clone-only.
+    """
     return bool(repo.get("upstream"))
 
 
